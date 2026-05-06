@@ -1,0 +1,137 @@
+ARTUNDERGROUND — PRODUCTION READINESS CHANGES LOG
+Date: 2026-05-04
+===================================================
+
+
+SECURITY FIXES
+--------------
+
+1. auth/callback/route.ts — Open redirect fix
+   Before: const next = searchParams.get('next') ?? '/dashboard'
+   After:  const rawNext = searchParams.get('next') ?? '/dashboard'
+           const next = rawNext.startsWith('/') && !rawNext.startsWith('//') ? rawNext : '/dashboard'
+   Reason: The `next` query param was accepted without validation, allowing
+           attackers to redirect users to external malicious URLs after login.
+
+2. api/auctions/route.ts — Internal error message leak (2 locations)
+   Before: { error: 'Failed to create auction: ' + aucError.message }
+   After:  { error: 'Failed to create auction' }
+           console.error('Auction insert error:', aucError.message)
+
+   Before: { error: 'Internal server error: ' + (err?.message ?? 'unknown') }
+   After:  { error: 'Internal server error' }
+   Reason: Raw Supabase/database error messages were being returned to the
+           client, leaking internal implementation details.
+
+3. api/webhooks/stripe/route.ts — Null assertion on stripe-signature header
+   Before: const sig = request.headers.get('stripe-signature')!
+   After:  const sig = request.headers.get('stripe-signature')
+           if (!sig) return NextResponse.json({ error: 'Missing signature' }, { status: 400 })
+   Reason: Non-null assertion would throw a runtime crash if the header was
+           missing (e.g. from a non-Stripe POST to the webhook endpoint).
+
+4. app/auth/page.tsx — Test credentials visible in production
+   Before: {mode === 'signin' && ( <test accounts section> )}
+   After:  {mode === 'signin' && process.env.NODE_ENV === 'development' && ( <test accounts section> )}
+   Reason: Hardcoded test email/password combinations were rendered on the
+           live sign-in page for all users, exposing test account credentials.
+
+
+MIDDLEWARE / ROUTING
+--------------------
+
+5. src/middleware.ts — Created then deleted (incorrect approach)
+   Initially created middleware.ts believing proxy.ts was broken.
+   Deleted after Next.js reported a conflict and confirmed this version
+   uses the "proxy" convention (proxy.ts / export proxy) rather than the
+   standard "middleware" convention. The original proxy.ts was correct.
+   Net change: none to routing behaviour.
+
+
+UI & CORRECTNESS FIXES
+-----------------------
+
+6. app/page.tsx — Dead "Explore auctions" link in hero
+   Before: <Link href='#auctions'>Explore auctions</Link>
+   After:  <Link href='/auctions'>Explore auctions</Link>
+   Reason: The anchor #auctions only existed when a LiveAuctionBanner was
+           rendered. If no live auction exists, the link went nowhere.
+
+7. app/page.tsx — Dead "See all" span on Featured works
+   Before: <span style={{ cursor: 'pointer' }}>See all</span>
+   After:  <Link href='/auctions'>See all</Link>
+   Reason: Non-interactive span with pointer cursor had no navigation target.
+
+8. app/page.tsx — Dead "Browse all" span on Artists section
+   Before: <span style={{ cursor: 'pointer' }}>Browse all</span>
+   After:  <Link href='/auctions'>Browse all</Link>
+   Reason: Same as above — looked clickable but did nothing.
+
+9. app/artworks/[id]/BiddingPanel.tsx — Raw ISO date string displayed
+   Before: Live auction - closes: {live.closes_at}
+   After:  Live auction — closes {new Date(live.closes_at).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}
+   Reason: The closes_at ISO timestamp (e.g. "2026-05-11T14:00:00.000Z")
+           was shown directly to users instead of a readable date.
+
+10. app/artworks/[id]/BiddingPanel.tsx — Error message not clearing on re-input
+    Before: onChange={e => setBidInput(e.target.value)}
+    After:  onChange={e => { setBidInput(e.target.value); setFeedback(null) }}
+    Reason: A bid error message (e.g. "Minimum bid is GBP 550") stayed
+            on screen even after the user started typing a new amount,
+            which was confusing UX.
+
+11. app/artworks/[id]/BiddingPanel.tsx — Null price rendered as "GBPundefined"
+    Before: <p>GBP{artwork.price_gbp?.toLocaleString()}</p>
+    After:  <p>{artwork.price_gbp != null ? 'GBP ' + artwork.price_gbp.toLocaleString() : 'POA'}</p>
+    Reason: When an artwork had no price set, the display read "GBPundefined".
+            Now correctly shows "POA" (Price on Application).
+
+12. app/dashboard/page.tsx — isWinning used float comparison instead of DB flag
+    Before: const isWinning = auc?.current_bid_gbp === bid.amount_gbp
+    After:  const isWinning = bid.is_winning
+    Reason: Floating point equality comparison between current_bid_gbp and
+            bid.amount_gbp could produce incorrect results. The database
+            already tracks this accurately via the is_winning flag on bids.
+
+13. hooks/useAuction.ts — Supabase client recreated on every render
+    Before: const supabase = createClient()  // top of function body
+    After:  const supabase = useMemo(() => createClient(), [])
+    Reason: createClient() was called on every render, creating a new
+            browser client instance each time and causing unnecessary work.
+
+14. hooks/useAuction.ts — Realtime subscription fired with empty auctionId
+    Before: useEffect(() => { const channel = supabase.channel(...).subscribe() }, [auctionId])
+    After:  useEffect(() => { if (!auctionId) return; ... }, [auctionId])
+    Also added guard to the data-loading useEffect.
+    Reason: When no auction exists, BiddingPanel passes an empty string to
+            useAuction. Without a guard, the hook would fire subscriptions
+            with an invalid filter ("auction_id=eq."), polluting the
+            Supabase realtime connection.
+
+15. app/layout.tsx — Default scaffold metadata
+    Before: title: "Create Next App", description: "Generated by create next app"
+    After:  title: "ArtUNDERGROUND — Where art finds its audience"
+            description: "The marketplace for independent artists, collectors,
+                          and curators. List, auction, and collect original works."
+    Reason: The page title and meta description were still the Next.js
+            scaffold defaults, which affects SEO and browser tab labelling.
+
+
+FILES CHANGED
+-------------
+  src/app/auth/callback/route.ts
+  src/app/api/auctions/route.ts
+  src/app/api/webhooks/stripe/route.ts
+  src/app/auth/page.tsx
+  src/app/page.tsx
+  src/app/artworks/[id]/BiddingPanel.tsx
+  src/app/dashboard/page.tsx
+  src/hooks/useAuction.ts
+  src/app/layout.tsx
+
+FILES CREATED (then deleted)
+-----------------------------
+  src/middleware.ts  — created in error, deleted after framework conflict
+
+===================================================
+End of log

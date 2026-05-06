@@ -1,0 +1,39 @@
+@import "tailwindcss";
+
+:root {
+  --bg-primary:   #0D0D0D;
+  --bg-secondary: #111111;
+  --bg-card:      #1A1A1A;
+  --bg-hover:     #222222;
+  --border:       #2A2A2A;
+  --border-light: #333333;
+  --text-primary: #E8E6DC;
+  --text-secondary: #888780;
+  --text-muted:   #555550;
+  --purple:       #7F77DD;
+  --purple-light: #EEEDFE;
+  --purple-dark:  #534AB7;
+  --green:        #1D9E75;
+  --red:          #D85A30;
+}
+
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+input, select, textarea {
+  background: var(--bg-card) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border) !important;
+}
+
+input::placeholder, textarea::placeholder {
+  color: var(--text-muted) !important;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: var(--purple) !important;
+  outline: none;
+}
