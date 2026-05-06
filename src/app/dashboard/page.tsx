@@ -4,6 +4,7 @@ import { SiteNav } from '@/components/SiteNav'
 import { StatusBadge } from '@/components/StatusBadge'
 import Link from 'next/link'
 import { CreateAuctionButton } from '@/components/CreateAuctionButton'
+import { NotificationsPanel } from '@/components/NotificationsPanel'
 
 export default async function DashboardPage() {
   const supabase = await createServerSupabaseClient()
@@ -232,28 +233,7 @@ export default async function DashboardPage() {
         )}
 
         {/* Notifications */}
-        {notifications.length > 0 && (
-          <div style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }} className='border rounded-xl p-5'>
-            <h2 style={{ color: 'var(--text-primary)' }} className='font-medium mb-4'>Notifications</h2>
-            <div className='space-y-3'>
-              {notifications.map((n: any) => (
-                <div key={n.id} style={{ background: 'var(--bg-secondary)' }}
-                  className='flex items-start gap-3 p-3 rounded-lg'>
-                  <div style={{ background: 'var(--purple)', width: '6px', height: '6px' }}
-                    className='rounded-full mt-2 flex-shrink-0' />
-                  <div>
-                    <div style={{ color: 'var(--text-primary)' }} className='text-sm font-medium'>
-                      {n.type.replace(/_/g, ' ')}
-                    </div>
-                    <div style={{ color: 'var(--text-muted)' }} className='text-xs mt-0.5'>
-                      {new Date(n.created_at).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        <NotificationsPanel initialNotifications={notifications} />
 
       </div>
     </div>

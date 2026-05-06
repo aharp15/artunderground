@@ -7,6 +7,7 @@ const CreateAuctionSchema = z.object({
   reserve_gbp: z.number().positive(),
   opens_at:    z.string().min(1),
   closes_at:   z.string().min(1),
+  visibility:  z.enum(['public', 'private']).default('public'),
 })
 
 export async function POST(request: NextRequest) {
@@ -39,7 +40,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { artwork_id, reserve_gbp, opens_at, closes_at } = parsed.data
+    const { artwork_id, reserve_gbp, opens_at, closes_at, visibility } = parsed.data
 
     const { data: artwork, error: artworkError } = await supabase
       .from('artworks').select('id, status, artist_id').eq('id', artwork_id).single()
@@ -62,6 +63,7 @@ export async function POST(request: NextRequest) {
         opens_at,
         closes_at,
         status: 'live',
+        visibility,
       })
       .select()
       .single()

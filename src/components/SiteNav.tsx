@@ -5,17 +5,27 @@ export async function SiteNav({ currentPage }: { currentPage?: string }) {
   const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  let profile = null
+  let profile: { id: string; display_name: string; roles: string[] } | null = null
   if (user) {
     const { data } = await supabase
       .from('profiles')
-      .select('display_name, roles')
+      .select('id, display_name, roles')
       .eq('auth_user_id', user.id)
       .single()
     profile = data
   }
 
   const isArtist = profile?.roles?.includes('artist')
+
+  let unreadMessages = 0
+  if (profile) {
+    const { count } = await supabase
+      .from('messages')
+      .select('id', { count: 'exact', head: true })
+      .eq('read', false)
+      .neq('sender_id', profile.id)
+    unreadMessages = count ?? 0
+  }
 
   return (
     <nav style={{ background: 'var(--bg-primary)', borderBottom: '0.5px solid var(--border)' }}
@@ -27,9 +37,9 @@ export async function SiteNav({ currentPage }: { currentPage?: string }) {
         </Link>
         <div className='flex items-center gap-5'>
           {[
-            { href: '/',          label: 'Discover',    page: 'discover' },
-            { href: '/auctions',  label: 'Auctions',    page: 'auctions' },
-            { href: '/artists',   label: 'Artists',     page: 'artists'  },
+            { href: '/',         label: 'Discover', page: 'discover' },
+            { href: '/auctions', label: 'Auctions', page: 'auctions' },
+            { href: '/artists',  label: 'Artists',  page: 'artists'  },
           ].map(({ href, label, page }) => (
             <Link key={page} href={href} style={{
               color: currentPage === page ? 'var(--text-primary)' : 'var(--text-secondary)',
@@ -48,6 +58,24 @@ export async function SiteNav({ currentPage }: { currentPage?: string }) {
             style={{ color: 'var(--text-secondary)', fontSize: '13px' }}
             className='hover:text-white transition-colors'>
             + Upload
+          </Link>
+        )}
+        {user && (
+          <Link href='/messages'
+            style={{ position: 'relative', color: currentPage === 'messages' ? 'var(--text-primary)' : 'var(--text-secondary)', fontSize: '13px' }}
+            className='hover:text-white transition-colors'>
+            Messages
+            {unreadMessages > 0 && (
+              <span style={{
+                position: 'absolute', top: '-6px', right: '-10px',
+                background: 'var(--purple)', color: 'white',
+                borderRadius: '50%', width: '16px', height: '16px',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '9px', fontWeight: 600,
+              }}>
+                {unreadMessages > 9 ? '9+' : unreadMessages}
+              </span>
+            )}
           </Link>
         )}
         {user ? (

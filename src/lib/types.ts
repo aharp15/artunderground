@@ -25,6 +25,7 @@ export interface Auction {
   id: string; artwork_id: string; seller_id: string; reserve_gbp: number
   current_bid_gbp: number | null; current_bidder_id: string | null; bid_count: number
   opens_at: string; closes_at: string; status: AuctionStatus; buyer_premium_pct: number | null
+  visibility: 'public' | 'private'
 }
 
 export interface Bid {
@@ -50,22 +51,60 @@ export interface Exhibition {
 export interface Notification {
   id: string; user_id: string
   type: 'new_bid' | 'outbid' | 'auction_won' | 'auction_ended_sold' |
-        'auction_ended_unsold' | 'new_follower' | 'work_featured'
+        'auction_ended_unsold' | 'new_follower' | 'work_featured' |
+        'new_message' | 'auction_invite'
   payload: Record<string, unknown>; read: boolean; created_at: string
+}
+
+export interface Conversation {
+  id: string
+  participant_a: string
+  participant_b: string
+  artwork_id: string | null
+  last_message_at: string | null
+  created_at: string
+}
+
+export interface Message {
+  id: string
+  conversation_id: string
+  sender_id: string
+  content: string
+  read: boolean
+  created_at: string
+}
+
+export interface AuctionInvite {
+  id: string
+  auction_id: string
+  invitee_id: string
+  invited_by: string
+  status: 'pending' | 'accepted' | 'declined'
+  created_at: string
 }
 
 export type Database = {
   public: {
     Tables: {
-      profiles: { Row: Profile }; artworks: { Row: Artwork }
-      auctions: { Row: Auction }; bids: { Row: Bid }
-      transactions: { Row: Transaction }; exhibitions: { Row: Exhibition }
-      notifications: { Row: Notification }
+      profiles:         { Row: Profile }
+      artworks:         { Row: Artwork }
+      auctions:         { Row: Auction }
+      bids:             { Row: Bid }
+      transactions:     { Row: Transaction }
+      exhibitions:      { Row: Exhibition }
+      notifications:    { Row: Notification }
+      conversations:    { Row: Conversation }
+      messages:         { Row: Message }
+      auction_invites:  { Row: AuctionInvite }
     }
     Functions: {
       place_bid: {
         Args: { p_auction_id: string; p_amount_gbp: number }
         Returns: { ok: boolean; bid_id?: string; amount?: number; error?: string; minimum_bid?: number }
+      }
+      get_or_create_conversation: {
+        Args: { p_other_profile_id: string; p_artwork_id?: string | null }
+        Returns: string
       }
     }
   }
