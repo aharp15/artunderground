@@ -59,7 +59,7 @@ export default async function ArtistsPage() {
             </Link>
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '16px' }}>
+          <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4'>
             {artists.map((artist: any) => (
               <Link
                 key={artist.id}

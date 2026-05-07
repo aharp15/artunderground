@@ -19,6 +19,10 @@ export default async function ArtworkPage({ params }: Props) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
+  const activeAuction: any = Array.isArray(artwork.auction)
+    ? (artwork.auction as any[])[0] ?? null
+    : (artwork.auction as any) ?? null
+
   return (
     <div className='min-h-screen bg-gray-50'>
 
@@ -38,10 +42,25 @@ export default async function ArtworkPage({ params }: Props) {
         </div>
       </nav>
 
-      <div className='grid grid-cols-[1fr_380px] min-h-[calc(100vh-56px)]'>
+      <div className='grid grid-cols-1 lg:grid-cols-[1fr_380px] min-h-[calc(100vh-56px)]'>
 
         {/* Left: artwork + details */}
         <div className='p-6 space-y-6 overflow-y-auto'>
+
+          {/* Auction room banner */}
+          {activeAuction?.id && (
+            <Link
+              href={`/auctions/${activeAuction.id}`}
+              className='flex items-center justify-between p-3 rounded-xl hover:opacity-90 transition-opacity'
+              style={{ background: '#1a0808', border: '0.5px solid #D85A30' }}
+            >
+              <div className='flex items-center gap-2'>
+                <div className='w-2 h-2 rounded-full bg-red-500 animate-pulse' />
+                <span style={{ color: '#D85A30', fontSize: '13px', fontWeight: 500 }}>Live auction in progress</span>
+              </div>
+              <span style={{ color: '#D85A30', fontSize: '12px' }}>Enter auction room →</span>
+            </Link>
+          )}
 
           {/* Main image */}
           <div className='bg-gray-900 rounded-xl aspect-[4/3] flex items-center justify-center overflow-hidden'>
@@ -135,7 +154,7 @@ export default async function ArtworkPage({ params }: Props) {
         </div>
 
         {/* Right: bidding panel */}
-        <div className='border-l border-gray-200 bg-white overflow-y-auto'>
+        <div className='border-t lg:border-t-0 lg:border-l border-gray-200 bg-white overflow-y-auto'>
           <BiddingPanel artwork={artwork} initialAuction={artwork.auction ?? null} />
         </div>
 

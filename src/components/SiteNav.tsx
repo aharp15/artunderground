@@ -31,11 +31,11 @@ export async function SiteNav({ currentPage }: { currentPage?: string }) {
     <nav style={{ background: 'var(--bg-primary)', borderBottom: '0.5px solid var(--border)' }}
       className='h-14 flex items-center justify-between px-6 flex-shrink-0'>
 
-      <div className='flex items-center gap-8'>
-        <Link href='/' className='text-white font-medium tracking-widest text-sm'>
+      <div className='flex items-center gap-6'>
+        <Link href='/' className='text-white font-medium tracking-widest text-sm shrink-0'>
           art<span style={{ color: 'var(--purple)' }}>UNDERGROUND</span>
         </Link>
-        <div className='flex items-center gap-5'>
+        <div className='hidden sm:flex items-center gap-5'>
           {[
             { href: '/',         label: 'Discover', page: 'discover' },
             { href: '/auctions', label: 'Auctions', page: 'auctions' },

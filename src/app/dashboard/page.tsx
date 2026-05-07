@@ -79,7 +79,7 @@ export default async function DashboardPage() {
 
         {/* Artist metrics */}
         {isArtist && (
-          <div className='grid grid-cols-4 gap-4'>
+          <div className='grid grid-cols-2 lg:grid-cols-4 gap-4'>
             {[
               { label: 'Works',         value: artworks.length },
               { label: 'Live auctions', value: auctions.filter((a: any) => a.status === 'live').length },
@@ -128,10 +128,10 @@ export default async function DashboardPage() {
                       </div>
                       <div style={{ color: 'var(--text-muted)' }} className='text-xs'>{auc.bid_count ?? 0} bids</div>
                     </div>
-                    <Link href={'/artworks/' + auc.artwork_id}
+                    <Link href={'/auctions/' + auc.id}
                       style={{ color: 'var(--purple)', fontSize: '12px' }}
                       className='hover:opacity-80 font-medium whitespace-nowrap'>
-                      View lot
+                      Enter room →
                     </Link>
                   </div>
                 )
@@ -161,7 +161,7 @@ export default async function DashboardPage() {
                 </Link>
               </div>
             ) : (
-              <div className='grid grid-cols-4 gap-3'>
+              <div className='grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3'>
                 {artworks.map((work: any) => (
                   <div key={work.id}
                     style={{ background: 'var(--bg-secondary)', borderColor: 'var(--border)' }}

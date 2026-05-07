@@ -65,10 +65,11 @@ export default async function AuctionsPage() {
               <h2 style={{ color: 'var(--text-primary)', fontSize: '14px', fontWeight: 500 }}>Live now</h2>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '14px' }}>
+            <div className='grid grid-cols-1 sm:grid-cols-2 gap-[14px]'>
               {liveAuctions.map((auc: any) => (
                 <div key={auc.id}
-                  style={{ background: 'var(--bg-card)', border: '0.5px solid var(--border)', borderRadius: '14px', overflow: 'hidden' }}>
+                  style={{ background: 'var(--bg-card)', border: '0.5px solid var(--border)', borderRadius: '14px', overflow: 'hidden' }}
+                  className='hover:border-purple-500 transition-colors'>
 
                   <div style={{ height: '200px', background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', position: 'relative' }}>
                     {auc.artwork?.image_urls?.[0]
@@ -121,9 +122,10 @@ export default async function AuctionsPage() {
                       </span>
                     </div>
 
-                    <Link href={'/artworks/' + auc.artwork?.id}
-                      style={{ display: 'block', textAlign: 'center', background: 'var(--purple)', color: '#fff', padding: '9px', borderRadius: '8px', fontSize: '13px', fontWeight: 500 }}>
-                      Place bid
+                    <Link href={'/auctions/' + auc.id}
+                      style={{ display: 'block', textAlign: 'center', background: 'var(--purple)', color: '#fff', padding: '12px', borderRadius: '8px', fontSize: '13px', fontWeight: 500 }}
+                      className='hover:opacity-90 transition-opacity active:scale-[0.98]'>
+                      Enter auction room →
                     </Link>
                   </div>
                 </div>
@@ -151,8 +153,9 @@ export default async function AuctionsPage() {
             <h2 style={{ color: 'var(--text-primary)', fontSize: '14px', fontWeight: 500, marginBottom: '14px' }}>Upcoming</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {upcomingAuctions.map((auc: any) => (
-                <div key={auc.id}
-                  style={{ background: 'var(--bg-card)', border: '0.5px solid var(--border)', borderRadius: '10px', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <Link key={auc.id} href={'/auctions/' + auc.id}
+                  style={{ background: 'var(--bg-card)', border: '0.5px solid var(--border)', borderRadius: '10px', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '12px', textDecoration: 'none' }}
+                  className='hover:border-purple-500 transition-colors'>
                   <div style={{ width: '44px', height: '44px', background: 'var(--bg-secondary)', borderRadius: '8px', overflow: 'hidden', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     {auc.artwork?.image_urls?.[0]
                       ? <img src={auc.artwork.image_urls[0]} alt='' style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -170,7 +173,7 @@ export default async function AuctionsPage() {
                     <div style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>GBP {Number(auc.reserve_gbp).toLocaleString()}+</div>
                     <div style={{ color: 'var(--text-muted)', fontSize: '10px', marginTop: '2px' }}>Upcoming</div>
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           </div>

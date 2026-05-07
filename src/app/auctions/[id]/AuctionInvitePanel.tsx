@@ -10,19 +10,66 @@ interface Invite {
   invitee: { id: string; display_name: string; avatar_url: string | null } | null
 }
 
-export function AuctionInvitePanel({ auctionId }: { auctionId: string }) {
+export function AuctionInvitePanel({ auctionId, visibility: initialVisibility }: { auctionId: string; visibility: 'public' | 'private' }) {
   const [invites,       setInvites]       = useState<Invite[]>([])
   const [searchQuery,   setSearchQuery]   = useState('')
   const [searchResults, setSearchResults] = useState<any[]>([])
   const [inviteLoading, setInviteLoading] = useState(false)
   const [loading,       setLoading]       = useState(true)
+  const [visibility,    setVisibility]    = useState<'public' | 'private'>(initialVisibility)
+  const [visLoading,    setVisLoading]    = useState(false)
+  const [inviteCode,    setInviteCode]    = useState<string | null>(null)
+  const [codeLoading,   setCodeLoading]   = useState(false)
+  const [copied,        setCopied]        = useState(false)
+
+  async function toggleVisibility(next: 'public' | 'private') {
+    setVisLoading(true)
+    const res = await fetch(`/api/auctions/${auctionId}/visibility`, {
+      method:  'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ visibility: next }),
+    })
+    if (res.ok) setVisibility(next)
+    setVisLoading(false)
+  }
 
   useEffect(() => {
     fetch(`/api/auctions/${auctionId}/invites`)
       .then(r => r.json())
       .then(d => { setInvites(d.invites ?? []); setLoading(false) })
       .catch(() => setLoading(false))
+    // Load existing invite code if one exists
+    fetch(`/api/auctions/${auctionId}/invite-code`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.code) setInviteCode(d.code) })
+      .catch(() => {})
   }, [auctionId])
+
+  async function generateInviteCode() {
+    setCodeLoading(true)
+    const res = await fetch(`/api/auctions/${auctionId}/invite-code`, { method: 'POST' })
+    if (res.ok) {
+      const data = await res.json()
+      setInviteCode(data.code)
+    }
+    setCodeLoading(false)
+  }
+
+  async function revokeInviteCode() {
+    setCodeLoading(true)
+    await fetch(`/api/auctions/${auctionId}/invite-code`, { method: 'DELETE' })
+    setInviteCode(null)
+    setCodeLoading(false)
+  }
+
+  function copyLink() {
+    if (!inviteCode) return
+    const url = `${window.location.origin}/invite/${inviteCode}`
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }
 
   async function handleSearch(q: string) {
     setSearchQuery(q)
@@ -57,13 +104,60 @@ export function AuctionInvitePanel({ auctionId }: { auctionId: string }) {
 
   return (
     <div style={{ background: 'var(--bg-card)', border: '0.5px solid var(--border)', borderRadius: '16px', padding: '24px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '16px', background: '#1a1933', border: '0.5px solid var(--purple)', borderRadius: '8px', padding: '8px 12px' }}>
-        <span style={{ fontSize: '12px', color: 'var(--purple)' }}>Private auction — you are the seller</span>
+      <h3 style={{ color: 'var(--text-primary)', fontSize: '14px', fontWeight: 500, marginBottom: '12px' }}>
+        Manage auction
+      </h3>
+
+      {/* Visibility toggle */}
+      <div style={{ marginBottom: '16px' }}>
+        <div style={{ color: 'var(--text-muted)', fontSize: '11px', marginBottom: '6px' }}>Visibility</div>
+        <div style={{ display: 'flex', gap: '6px' }}>
+          {(['public', 'private'] as const).map(v => (
+            <button key={v} onClick={() => toggleVisibility(v)} disabled={visLoading || visibility === v}
+              style={{
+                flex: 1, padding: '7px', borderRadius: '8px', fontSize: '12px', fontWeight: 500,
+                border: '0.5px solid',
+                borderColor: visibility === v ? 'var(--purple)' : 'var(--border)',
+                background:  visibility === v ? '#1a1933' : 'var(--bg-secondary)',
+                color:       visibility === v ? 'var(--purple)' : 'var(--text-muted)',
+                cursor: visibility === v ? 'default' : visLoading ? 'wait' : 'pointer',
+              }}>
+              {v === 'public' ? 'Public' : 'Private'}
+            </button>
+          ))}
+        </div>
+        {visibility === 'private' && (
+          <p style={{ color: 'var(--text-muted)', fontSize: '11px', marginTop: '5px' }}>
+            Only invited collectors can see and bid.
+          </p>
+        )}
       </div>
 
-      <h3 style={{ color: 'var(--text-primary)', fontSize: '14px', fontWeight: 500, marginBottom: '14px' }}>
-        Invite collectors
-      </h3>
+      {/* Invite link */}
+      <div style={{ marginBottom: '16px' }}>
+        <div style={{ color: 'var(--text-muted)', fontSize: '11px', marginBottom: '6px' }}>Invite link</div>
+        {inviteCode ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <div style={{ flex: 1, padding: '7px 10px', borderRadius: '8px', background: 'var(--bg-secondary)', border: '0.5px solid var(--border)', fontSize: '12px', color: 'var(--text-secondary)', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                /invite/{inviteCode}
+              </div>
+              <button onClick={copyLink} style={{ padding: '7px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: 500, border: '0.5px solid var(--border)', background: copied ? '#0a1f18' : 'var(--bg-secondary)', color: copied ? 'var(--green)' : 'var(--text-primary)', cursor: 'pointer', flexShrink: 0 }}>
+                {copied ? 'Copied!' : 'Copy'}
+              </button>
+            </div>
+            <button onClick={revokeInviteCode} disabled={codeLoading} style={{ fontSize: '11px', color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', padding: 0, opacity: codeLoading ? 0.5 : 1 }}>
+              Revoke link
+            </button>
+          </div>
+        ) : (
+          <button onClick={generateInviteCode} disabled={codeLoading} style={{ width: '100%', padding: '7px', borderRadius: '8px', fontSize: '12px', fontWeight: 500, border: '0.5px solid var(--border)', background: 'var(--bg-secondary)', color: 'var(--text-primary)', cursor: codeLoading ? 'wait' : 'pointer', opacity: codeLoading ? 0.6 : 1 }}>
+            {codeLoading ? 'Generating…' : 'Generate invite link'}
+          </button>
+        )}
+      </div>
+
+      <div style={{ color: 'var(--text-muted)', fontSize: '11px', marginBottom: '8px' }}>Invite collectors</div>
 
       <input
         type='text'

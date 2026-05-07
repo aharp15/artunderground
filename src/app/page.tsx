@@ -40,32 +40,35 @@ export default async function Home() {
       <div className='max-w-5xl mx-auto px-6 py-10'>
 
         {/* Hero band */}
-        <div style={{ background: 'linear-gradient(135deg, #1a1933 0%, #0d1a2e 100%)', borderColor: 'var(--border)', borderRadius: '16px', padding: '32px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
+        <div style={{ background: 'linear-gradient(135deg, #1a1933 0%, #0d1a2e 100%)', borderColor: 'var(--border)', borderRadius: '16px', padding: '32px', marginBottom: '20px' }}
+          className='flex flex-wrap gap-6 justify-between items-center'>
+          <div style={{ flex: '1', minWidth: '240px' }}>
             <h1 style={{ color: 'var(--text-primary)', fontSize: '24px', fontWeight: 500, lineHeight: 1.3, maxWidth: '340px' }}>
               Where art finds its audience — and its price
             </h1>
             <p style={{ color: 'var(--purple)', fontSize: '13px', marginTop: '8px' }}>
               Artists. Collectors. Curators. All in one space.
             </p>
-            <div style={{ display: 'flex', gap: '10px', marginTop: '18px' }}>
+            <div style={{ display: 'flex', gap: '10px', marginTop: '18px', flexWrap: 'wrap' }}>
               <Link href='/auth'
-                style={{ background: 'var(--purple)', color: 'white', padding: '9px 18px', borderRadius: '10px', fontSize: '13px', fontWeight: 500 }}>
+                style={{ background: 'var(--purple)', color: 'white', padding: '9px 18px', borderRadius: '10px', fontSize: '13px', fontWeight: 500 }}
+                className='hover:opacity-90 transition-opacity'>
                 Show my work
               </Link>
               <Link href='/auctions'
-                style={{ background: 'transparent', color: 'var(--purple)', padding: '9px 18px', borderRadius: '10px', fontSize: '13px', fontWeight: 500, border: '1.5px solid var(--purple)' }}>
+                style={{ background: 'transparent', color: 'var(--purple)', padding: '9px 18px', borderRadius: '10px', fontSize: '13px', fontWeight: 500, border: '1.5px solid var(--purple)' }}
+                className='hover:opacity-90 transition-opacity'>
                 Explore auctions
               </Link>
             </div>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', alignItems: 'flex-end' }}>
+          <div className='flex sm:flex-col gap-5 sm:gap-4 sm:items-end'>
             {[
               { num: artists.length + '00+', label: 'Artists' },
               { num: liveCount > 0 ? liveCount + '' : '—', label: 'Live auctions' },
               { num: totalArtworks + '', label: 'Works listed' },
             ].map(({ num, label }) => (
-              <div key={label} style={{ textAlign: 'right' }}>
+              <div key={label} className='sm:text-right'>
                 <div style={{ fontSize: '22px', fontWeight: 500, color: 'var(--text-primary)' }}>{num}</div>
                 <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{label}</div>
               </div>
@@ -98,7 +101,7 @@ export default async function Home() {
               </Link>
             </div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '12px' }}>
+            <div className='grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3'>
               {artworks.map((work: any) => (
                 <Link href={'/artworks/' + work.id} key={work.id}
                   style={{ background: 'var(--bg-card)', borderColor: 'var(--border)', borderRadius: '12px', border: '0.5px solid', overflow: 'hidden', display: 'block', textDecoration: 'none' }}
@@ -153,7 +156,7 @@ export default async function Home() {
               <h2 style={{ color: 'var(--text-primary)', fontSize: '15px', fontWeight: 500 }}>Artists to follow</h2>
               <Link href='/artists' style={{ color: 'var(--purple)', fontSize: '12px' }}>Browse all</Link>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '12px' }}>
+            <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3'>
               {artists.map((artist: any) => (
                 <Link key={artist.id} href={'/artists/' + artist.id}
                   style={{ background: 'var(--bg-card)', borderColor: 'var(--border)', border: '0.5px solid', borderRadius: '12px', padding: '14px', display: 'flex', gap: '10px', alignItems: 'flex-start', textDecoration: 'none' }}

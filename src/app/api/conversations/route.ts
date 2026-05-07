@@ -2,9 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { z } from 'zod'
 
+const uuidLike = z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)
+
 const CreateConvSchema = z.object({
-  other_profile_id: z.string().uuid(),
-  artwork_id:       z.string().uuid().nullable().optional(),
+  other_profile_id: uuidLike,
+  artwork_id:       uuidLike.nullable().optional(),
 })
 
 export async function GET() {

@@ -2,6 +2,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import { SiteNav } from '@/components/SiteNav'
 import { AuctionInvitePanel } from './AuctionInvitePanel'
+import { AuctionStreamClient, AuctionBidClient } from './AuctionRoomClient'
 import Link from 'next/link'
 
 interface Props { params: Promise<{ id: string }> }
@@ -14,7 +15,7 @@ export default async function AuctionPage({ params }: Props) {
     .from('auctions')
     .select(`
       id, status, visibility, reserve_gbp, current_bid_gbp, bid_count,
-      opens_at, closes_at, seller_id,
+      opens_at, closes_at, seller_id, stream_active,
       artwork:artworks(id, title, medium, dimensions, year, image_urls,
         artist:profiles!artist_id(id, display_name, location, avatar_url)
       ),
@@ -34,7 +35,8 @@ export default async function AuctionPage({ params }: Props) {
   }
 
   const a = auction as any
-  const isSeller  = profile && a.seller_id === profile.id
+
+  const isSeller  = !!(profile && a.seller_id === profile.id)
   const isPrivate = a.visibility === 'private'
 
   let invite: any = null
@@ -48,22 +50,31 @@ export default async function AuctionPage({ params }: Props) {
     invite = data
   }
 
-  const canBid = !isPrivate || isSeller || invite?.status === 'accepted'
-
-  const diff    = new Date(a.closes_at).getTime() - Date.now()
-  const isLive  = a.status === 'live' && diff > 0
-  const hrs     = Math.floor(diff / 3600000)
-  const mins    = Math.floor((diff % 3600000) / 60000)
+  const canBid    = !isPrivate || isSeller || invite?.status === 'accepted'
+  const diff      = new Date(a.closes_at).getTime() - Date.now()
+  const isLive    = a.status === 'live' && diff > 0
+  const canStream = profile && (isSeller || canBid)
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg-primary)' }}>
       <SiteNav currentPage='auctions' />
 
       <div className='max-w-5xl mx-auto px-6 py-10'>
-        <div className='grid grid-cols-[1fr_360px] gap-8 items-start'>
+        <div className='grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-8 items-start'>
 
-          {/* Left: artwork */}
+          {/* ── Left: stream + artwork ─────────────────── */}
           <div className='space-y-6'>
+
+            {/* Stream (host or viewer) — client-side only */}
+            {canStream && a.status !== 'sold' && (
+              <AuctionStreamClient
+                auctionId={auctionId}
+                isHost={isSeller}
+                initialStreamActive={a.stream_active ?? false}
+              />
+            )}
+
+            {/* Artwork image */}
             <div style={{ background: 'var(--bg-card)', borderRadius: '16px', overflow: 'hidden', aspectRatio: '4/3', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               {a.artwork?.image_urls?.[0]
                 ? <img src={a.artwork.image_urls[0]} alt={a.artwork.title} style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }} />
@@ -106,8 +117,9 @@ export default async function AuctionPage({ params }: Props) {
             )}
           </div>
 
-          {/* Right: bidding/invite panel */}
+          {/* ── Right: bid / invite panel ──────────────── */}
           <div>
+
             {/* Private + not invited */}
             {isPrivate && !canBid && (
               <div style={{ background: 'var(--bg-card)', border: '0.5px solid var(--border)', borderRadius: '16px', padding: '28px 24px', textAlign: 'center' }}>
@@ -116,12 +128,12 @@ export default async function AuctionPage({ params }: Props) {
                   Private auction
                 </h2>
                 <p style={{ color: 'var(--text-muted)', fontSize: '13px', lineHeight: '1.6' }}>
-                  This is a private auction. You need an invitation to bid.
+                  You need an invitation to bid.
                 </p>
                 {invite?.status === 'pending' && (
                   <div style={{ marginTop: '16px', background: '#1a1933', border: '0.5px solid var(--purple)', borderRadius: '8px', padding: '10px 14px' }}>
                     <p style={{ color: 'var(--purple)', fontSize: '13px' }}>
-                      You have a pending invitation. Check your notifications to accept.
+                      Pending invitation — check notifications to accept.
                     </p>
                   </div>
                 )}
@@ -130,50 +142,26 @@ export default async function AuctionPage({ params }: Props) {
 
             {/* Seller: invite management */}
             {isSeller && (
-              <AuctionInvitePanel auctionId={auctionId} />
-            )}
-
-            {/* Bidding panel (canBid) */}
-            {canBid && !isSeller && (
-              <div style={{ background: 'var(--bg-card)', border: '0.5px solid var(--border)', borderRadius: '16px', padding: '24px' }}>
-                {isPrivate && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '16px', background: '#1a1933', border: '0.5px solid var(--purple)', borderRadius: '8px', padding: '8px 12px' }}>
-                    <span style={{ fontSize: '12px', color: 'var(--purple)' }}>Private auction — invited</span>
-                  </div>
-                )}
-
-                {isLive && (
-                  <div style={{ background: '#1a0808', border: '0.5px solid var(--red)', borderRadius: '8px', padding: '8px 12px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--red)' }} className='animate-pulse' />
-                    <span style={{ color: 'var(--red)', fontSize: '12px', fontWeight: 500 }}>
-                      Live — {hrs}h {mins}m remaining
-                    </span>
-                  </div>
-                )}
-
-                <div style={{ marginBottom: '20px' }}>
-                  <div style={{ color: 'var(--text-muted)', fontSize: '12px', marginBottom: '4px' }}>
-                    {a.current_bid_gbp ? 'Current bid' : 'Reserve'}
-                  </div>
-                  <div style={{ color: 'var(--text-primary)', fontSize: '32px', fontWeight: 600 }}>
-                    GBP {(a.current_bid_gbp ?? a.reserve_gbp).toLocaleString()}
-                  </div>
-                  <div style={{ color: 'var(--text-muted)', fontSize: '12px' }}>{a.bid_count ?? 0} bids</div>
-                </div>
-
-                {isLive && (
-                  <Link href={'/artworks/' + a.artwork?.id}
-                    style={{ display: 'block', textAlign: 'center', background: 'var(--purple)', color: 'white', padding: '12px', borderRadius: '10px', fontSize: '14px', fontWeight: 500 }}>
-                    Place bid
-                  </Link>
-                )}
-                {!isLive && (
-                  <p style={{ color: 'var(--text-muted)', fontSize: '13px', textAlign: 'center' }}>
-                    {a.status === 'scheduled' ? 'Auction not yet open' : 'Auction ended'}
-                  </p>
-                )}
+              <div style={{ marginBottom: '16px' }}>
+                <AuctionInvitePanel auctionId={auctionId} visibility={a.visibility ?? 'public'} />
               </div>
             )}
+
+            {/* Bid panel — sellers see it read-only, invited bidders see form */}
+            {(canBid || isSeller) && (
+              <AuctionBidClient
+                auctionId={auctionId}
+                initialCurrentBid={a.current_bid_gbp ?? null}
+                initialReserve={a.reserve_gbp}
+                initialBidCount={a.bid_count ?? 0}
+                isLive={isLive}
+                isPrivate={isPrivate && !!invite}
+                isSeller={isSeller}
+                closesAt={a.closes_at}
+                status={a.status}
+              />
+            )}
+
           </div>
         </div>
       </div>

@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 
 interface Props {
   otherProfileId: string
@@ -10,11 +9,12 @@ interface Props {
 }
 
 export function MessageButton({ otherProfileId, artworkId, label = 'Message' }: Props) {
-  const router  = useRouter()
   const [loading, setLoading] = useState(false)
+  const [error, setError]     = useState<string | null>(null)
 
   async function handleClick() {
     setLoading(true)
+    setError(null)
     try {
       const res = await fetch('/api/conversations', {
         method:  'POST',
@@ -23,28 +23,37 @@ export function MessageButton({ otherProfileId, artworkId, label = 'Message' }: 
       })
       const data = await res.json()
       if (res.ok && data.conversation_id) {
-        router.push('/messages/' + data.conversation_id)
+        window.location.href = '/messages/' + data.conversation_id
+        return
       }
+      setError(data.error ?? 'Could not open conversation')
+    } catch {
+      setError('Network error')
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <button
-      onClick={handleClick}
-      disabled={loading}
-      style={{
-        background: 'transparent',
-        border: '0.5px solid var(--border)',
-        color: 'var(--text-secondary)',
-        padding: '8px 16px',
-        borderRadius: '8px',
-        fontSize: '13px',
-        cursor: loading ? 'wait' : 'pointer',
-        opacity: loading ? 0.6 : 1,
-      }}>
-      {loading ? '...' : label}
-    </button>
+    <div style={{ display: 'inline-flex', flexDirection: 'column', gap: '4px' }}>
+      <button
+        onClick={handleClick}
+        disabled={loading}
+        style={{
+          background: 'transparent',
+          border: '0.5px solid var(--border)',
+          color: 'var(--text-secondary)',
+          padding: '8px 16px',
+          borderRadius: '8px',
+          fontSize: '13px',
+          cursor: loading ? 'wait' : 'pointer',
+          opacity: loading ? 0.6 : 1,
+        }}>
+        {loading ? 'Opening...' : label}
+      </button>
+      {error && (
+        <span style={{ color: 'var(--red)', fontSize: '11px' }}>{error}</span>
+      )}
+    </div>
   )
 }

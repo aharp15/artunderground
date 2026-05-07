@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import { SiteNav } from '@/components/SiteNav'
 import { StatusBadge } from '@/components/StatusBadge'
 import { AuctionCountdown } from '@/components/AuctionCountdown'
+import { MessageButton } from '@/components/MessageButton'
 import Link from 'next/link'
 
 interface Props { params: Promise<{ id: string }> }
@@ -10,6 +11,13 @@ interface Props { params: Promise<{ id: string }> }
 export default async function ArtistProfilePage({ params }: Props) {
   const { id } = await params
   const supabase = await createServerSupabaseClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  let currentProfileId: string | null = null
+  if (user) {
+    const { data: me } = await supabase.from('profiles').select('id').eq('auth_user_id', user.id).single()
+    currentProfileId = me?.id ?? null
+  }
 
   const [profileRes, artworksRes, auctionsRes] = await Promise.all([
     supabase
@@ -102,7 +110,7 @@ export default async function ArtistProfilePage({ params }: Props) {
               )}
 
               {/* Stats row */}
-              <div style={{ display: 'flex', gap: '24px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '24px', flexWrap: 'wrap' }}>
                 {[
                   { label: 'Listed',     value: listedCount },
                   { label: 'In auction', value: inAuctionCount },
@@ -113,6 +121,9 @@ export default async function ArtistProfilePage({ params }: Props) {
                     <div style={{ color: 'var(--text-muted)', fontSize: '11px', marginTop: '2px' }}>{label}</div>
                   </div>
                 ))}
+                {currentProfileId && currentProfileId !== artist.id && (
+                  <MessageButton otherProfileId={artist.id} label='Message artist' />
+                )}
               </div>
             </div>
           </div>
@@ -194,7 +205,7 @@ export default async function ArtistProfilePage({ params }: Props) {
               <div style={{ color: 'var(--text-muted)', fontSize: '13px' }}>No works listed yet.</div>
             </div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '12px' }}>
+            <div className='grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3'>
               {artworks.map((work: any) => (
                 <Link
                   key={work.id}
