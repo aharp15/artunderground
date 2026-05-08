@@ -10,7 +10,7 @@ interface Invite {
   invitee: { id: string; display_name: string; avatar_url: string | null } | null
 }
 
-export function AuctionInvitePanel({ auctionId, visibility: initialVisibility }: { auctionId: string; visibility: 'public' | 'private' }) {
+export function AuctionInvitePanel({ auctionId, visibility: initialVisibility, isLive }: { auctionId: string; visibility: 'public' | 'private'; isLive: boolean }) {
   const [invites,       setInvites]       = useState<Invite[]>([])
   const [searchQuery,   setSearchQuery]   = useState('')
   const [searchResults, setSearchResults] = useState<any[]>([])
@@ -21,6 +21,8 @@ export function AuctionInvitePanel({ auctionId, visibility: initialVisibility }:
   const [inviteCode,    setInviteCode]    = useState<string | null>(null)
   const [codeLoading,   setCodeLoading]   = useState(false)
   const [copied,        setCopied]        = useState(false)
+  const [endLoading,    setEndLoading]    = useState(false)
+  const [ended,         setEnded]         = useState(false)
 
   async function toggleVisibility(next: 'public' | 'private') {
     setVisLoading(true)
@@ -60,6 +62,14 @@ export function AuctionInvitePanel({ auctionId, visibility: initialVisibility }:
     await fetch(`/api/auctions/${auctionId}/invite-code`, { method: 'DELETE' })
     setInviteCode(null)
     setCodeLoading(false)
+  }
+
+  async function endAuction() {
+    if (!confirm('End this auction now? The current highest bidder will win.')) return
+    setEndLoading(true)
+    const res = await fetch(`/api/auctions/${auctionId}/end`, { method: 'PATCH' })
+    if (res.ok) setEnded(true)
+    setEndLoading(false)
   }
 
   function copyLink() {
@@ -193,6 +203,24 @@ export function AuctionInvitePanel({ auctionId, visibility: initialVisibility }:
               </button>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* End auction early */}
+      {isLive && !ended && (
+        <div style={{ borderTop: '0.5px solid var(--border)', paddingTop: '16px', marginTop: '8px' }}>
+          <button
+            onClick={endAuction}
+            disabled={endLoading}
+            style={{ width: '100%', padding: '8px', borderRadius: '8px', fontSize: '12px', fontWeight: 500, border: '0.5px solid var(--red)', background: '#1a0a08', color: 'var(--red)', cursor: endLoading ? 'wait' : 'pointer', opacity: endLoading ? 0.6 : 1 }}
+          >
+            {endLoading ? 'Ending…' : 'End auction now'}
+          </button>
+        </div>
+      )}
+      {ended && (
+        <div style={{ borderTop: '0.5px solid var(--border)', paddingTop: '16px', marginTop: '8px' }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: '12px', textAlign: 'center' }}>Auction ended — winner can now pay.</p>
         </div>
       )}
 

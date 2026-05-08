@@ -143,7 +143,7 @@ export default async function AuctionPage({ params }: Props) {
             {/* Seller: invite management */}
             {isSeller && (
               <div style={{ marginBottom: '16px' }}>
-                <AuctionInvitePanel auctionId={auctionId} visibility={a.visibility ?? 'public'} />
+                <AuctionInvitePanel auctionId={auctionId} visibility={a.visibility ?? 'public'} isLive={isLive} />
               </div>
             )}
 
@@ -157,7 +157,7 @@ export default async function AuctionPage({ params }: Props) {
                 isLive={isLive}
                 isPrivate={isPrivate && !!invite}
                 isSeller={isSeller}
-                closesAt={a.closes_at}
+                initialClosesAt={a.closes_at}
                 status={a.status}
               />
             )}

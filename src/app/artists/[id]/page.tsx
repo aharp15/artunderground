@@ -1,9 +1,12 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import { SiteNav } from '@/components/SiteNav'
 import { StatusBadge } from '@/components/StatusBadge'
 import { AuctionCountdown } from '@/components/AuctionCountdown'
 import { MessageButton } from '@/components/MessageButton'
+import { FollowButton } from '@/components/FollowButton'
+import { Price } from '@/components/Price'
 import Link from 'next/link'
 
 interface Props { params: Promise<{ id: string }> }
@@ -18,6 +21,8 @@ export default async function ArtistProfilePage({ params }: Props) {
     const { data: me } = await supabase.from('profiles').select('id').eq('auth_user_id', user.id).single()
     currentProfileId = me?.id ?? null
   }
+
+  const admin = createServiceClient()
 
   const [profileRes, artworksRes, auctionsRes] = await Promise.all([
     supabase
@@ -44,15 +49,29 @@ export default async function ArtistProfilePage({ params }: Props) {
 
   if (!profileRes.data) notFound()
 
-  const artist      = profileRes.data as any
-  const artworks    = (artworksRes.data    ?? []) as any[]
-  const liveAuctions = (auctionsRes.data   ?? []) as any[]
+  const artist       = profileRes.data as any
+  const artworks     = (artworksRes.data  ?? []) as any[]
+  const liveAuctions = (auctionsRes.data  ?? []) as any[]
 
   const listedCount    = artworks.filter((a: any) => a.status === 'listed').length
   const inAuctionCount = artworks.filter((a: any) => a.status === 'in_auction').length
   const soldCount      = artworks.filter((a: any) => a.status === 'sold').length
 
   const memberSince = new Date(artist.created_at).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
+
+  // Follower count + whether current user follows this artist
+  const { count: followerCount } = await admin
+    .from('follows').select('id', { count: 'exact', head: true })
+    .eq('following_id', id)
+
+  let isFollowing = false
+  if (currentProfileId && currentProfileId !== artist.id) {
+    const { data: followRow } = await admin
+      .from('follows').select('id')
+      .eq('follower_id', currentProfileId).eq('following_id', id)
+      .maybeSingle()
+    isFollowing = !!followRow
+  }
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg-primary)' }}>
@@ -122,7 +141,14 @@ export default async function ArtistProfilePage({ params }: Props) {
                   </div>
                 ))}
                 {currentProfileId && currentProfileId !== artist.id && (
-                  <MessageButton otherProfileId={artist.id} label='Message artist' />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <FollowButton
+                      artistId={artist.id}
+                      initialIsFollowing={isFollowing}
+                      initialCount={followerCount ?? 0}
+                    />
+                    <MessageButton otherProfileId={artist.id} label='Message' />
+                  </div>
                 )}
               </div>
             </div>
@@ -175,7 +201,7 @@ export default async function ArtistProfilePage({ params }: Props) {
                   <div style={{ textAlign: 'right', flexShrink: 0 }}>
                     <div style={{ color: '#1D9E75', fontSize: '14px', fontWeight: 500 }}>
                       {auc.current_bid_gbp
-                        ? 'GBP ' + Number(auc.current_bid_gbp).toLocaleString()
+                        ? <Price gbp={auc.current_bid_gbp} />
                         : 'No bids'}
                     </div>
                     <AuctionCountdown closesAt={auc.closes_at} />
@@ -241,9 +267,9 @@ export default async function ArtistProfilePage({ params }: Props) {
                       <StatusBadge status={work.status} />
                       <span style={{ color: 'var(--purple)', fontSize: '11px', fontWeight: 500 }}>
                         {work.auction?.current_bid_gbp
-                          ? 'GBP ' + Number(work.auction.current_bid_gbp).toLocaleString()
+                          ? <Price gbp={work.auction.current_bid_gbp} />
                           : work.price_gbp
-                          ? 'GBP ' + Number(work.price_gbp).toLocaleString()
+                          ? <Price gbp={work.price_gbp} />
                           : 'POA'}
                       </span>
                     </div>

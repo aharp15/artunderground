@@ -1,6 +1,7 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { SiteNav } from '@/components/SiteNav'
 import { LiveAuctionBanner } from '@/components/LiveAuctionBanner'
+import { Price } from '@/components/Price'
 import Link from 'next/link'
 
 export default async function Home() {
@@ -132,9 +133,9 @@ export default async function Home() {
                     </div>
                     <div style={{ color: work.status === 'in_auction' ? '#7F77DD' : 'var(--purple)', fontSize: '12px', fontWeight: 500, marginTop: '6px' }}>
                       {work.auction?.current_bid_gbp
-                        ? 'GBP ' + Number(work.auction.current_bid_gbp).toLocaleString()
+                        ? <Price gbp={work.auction.current_bid_gbp} />
                         : work.price_gbp
-                        ? 'GBP ' + Number(work.price_gbp).toLocaleString()
+                        ? <Price gbp={work.price_gbp} />
                         : 'POA'}
                     </div>
                     {work.auction?.bid_count > 0 && (

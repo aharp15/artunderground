@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { Price } from '@/components/Price'
 
 type Role = 'artist' | 'collector' | 'curator'
 type Step = 'role' | 'profile' | 'verify' | 'specific' | 'terms' | 'done'
@@ -325,8 +326,8 @@ export default function OnboardingPage() {
           <>
             <div className='border-t border-gray-200 my-2' />
             <div className='flex justify-between text-xs text-gray-500'>
-              <span>Example: GBP 2,000 sale - you receive</span>
-              <span className='font-medium text-green-600'>GBP 1,840</span>
+              <span>Example: <Price gbp={2000} /> sale - you receive</span>
+              <span className='font-medium text-green-600'><Price gbp={1840} /></span>
             </div>
           </>
         )}

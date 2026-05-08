@@ -37,9 +37,10 @@ export async function SiteNav({ currentPage }: { currentPage?: string }) {
         </Link>
         <div className='hidden sm:flex items-center gap-5'>
           {[
-            { href: '/',         label: 'Discover', page: 'discover' },
-            { href: '/auctions', label: 'Auctions', page: 'auctions' },
-            { href: '/artists',  label: 'Artists',  page: 'artists'  },
+            { href: '/',          label: 'Discover',   page: 'discover'   },
+            { href: '/auctions',  label: 'Auctions',   page: 'auctions'   },
+            { href: '/artists',   label: 'Artists',    page: 'artists'    },
+            ...(user ? [{ href: '/following', label: 'Following', page: 'following' }] : []),
           ].map(({ href, label, page }) => (
             <Link key={page} href={href} style={{
               color: currentPage === page ? 'var(--text-primary)' : 'var(--text-secondary)',

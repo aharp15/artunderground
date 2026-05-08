@@ -1,6 +1,7 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { SiteNav } from '@/components/SiteNav'
 import { AuctionCountdown } from '@/components/AuctionCountdown'
+import { Price } from '@/components/Price'
 import Link from 'next/link'
 
 export default async function AuctionsPage() {
@@ -97,7 +98,7 @@ export default async function AuctionsPage() {
                         <div style={{ color: 'var(--text-muted)', fontSize: '10px' }}>Current bid</div>
                         <div style={{ color: '#1D9E75', fontSize: '14px', fontWeight: 500, marginTop: '2px' }}>
                           {auc.current_bid_gbp
-                            ? 'GBP ' + Number(auc.current_bid_gbp).toLocaleString()
+                            ? <Price gbp={auc.current_bid_gbp} />
                             : 'No bids'}
                         </div>
                       </div>
@@ -118,7 +119,7 @@ export default async function AuctionsPage() {
                         {(auc.current_bid_gbp ?? 0) >= auc.reserve_gbp ? '✓ Reserve met' : 'Reserve not yet met'}
                       </span>
                       <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                        Reserve GBP {Number(auc.reserve_gbp).toLocaleString()}
+                        Reserve <Price gbp={auc.reserve_gbp} />
                       </span>
                     </div>
 
@@ -170,7 +171,7 @@ export default async function AuctionsPage() {
                     </div>
                   </div>
                   <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                    <div style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>GBP {Number(auc.reserve_gbp).toLocaleString()}+</div>
+                    <div style={{ color: 'var(--text-secondary)', fontSize: '12px' }}><Price gbp={auc.reserve_gbp} />+</div>
                     <div style={{ color: 'var(--text-muted)', fontSize: '10px', marginTop: '2px' }}>Upcoming</div>
                   </div>
                 </Link>

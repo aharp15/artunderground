@@ -10,6 +10,8 @@
   },
   "dependencies": {
     "@livekit/components-react": "^2.9.21",
+    "@stripe/react-stripe-js": "^6.3.0",
+    "@stripe/stripe-js": "^9.4.0",
     "@supabase/ssr": "^0.10.2",
     "@supabase/supabase-js": "^2.105.3",
     "livekit-client": "^2.18.9",

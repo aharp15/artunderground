@@ -2,6 +2,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { SiteNav } from '@/components/SiteNav'
 import { StatusBadge } from '@/components/StatusBadge'
+import { Price } from '@/components/Price'
 import Link from 'next/link'
 import { CreateAuctionButton } from '@/components/CreateAuctionButton'
 import { NotificationsPanel } from '@/components/NotificationsPanel'
@@ -34,7 +35,7 @@ export default async function DashboardPage() {
       ? supabase.from('bids')
           .select('*, auction:auctions(id, status, closes_at, current_bid_gbp, artwork:artworks(id, title, image_urls, price_gbp))')
           .eq('bidder_id', profile.id).eq('is_winning', true)
-          .order('placed_at', { ascending: false }).limit(6)
+          .order('placed_at', { ascending: false }).limit(10)
       : Promise.resolve({ data: [] }),
     supabase.from('notifications').select('*').eq('user_id', profile.id)
       .eq('read', false).order('created_at', { ascending: false }).limit(5),
@@ -83,7 +84,7 @@ export default async function DashboardPage() {
             {[
               { label: 'Works',         value: artworks.length },
               { label: 'Live auctions', value: auctions.filter((a: any) => a.status === 'live').length },
-              { label: 'Total earned',  value: totalEarned > 0 ? 'GBP ' + totalEarned.toLocaleString() : 'GBP 0' },
+              { label: 'Total earned',  value: <Price gbp={totalEarned} /> },
               { label: 'Active bids',   value: auctions.reduce((s: number, a: any) => s + (a.bid_count ?? 0), 0) },
             ].map(m => (
               <div key={m.label}
@@ -124,7 +125,7 @@ export default async function DashboardPage() {
                     </div>
                     <div className='text-right'>
                       <div style={{ color: 'var(--purple)' }} className='font-medium text-sm'>
-                        GBP {(auc.current_bid_gbp ?? auc.reserve_gbp ?? 0).toLocaleString()}
+                        <Price gbp={auc.current_bid_gbp ?? auc.reserve_gbp ?? 0} />
                       </div>
                       <div style={{ color: 'var(--text-muted)' }} className='text-xs'>{auc.bid_count ?? 0} bids</div>
                     </div>
@@ -198,13 +199,14 @@ export default async function DashboardPage() {
             <h2 style={{ color: 'var(--text-primary)' }} className='font-medium mb-4'>Active bids</h2>
             <div className='space-y-3'>
               {watching.map((bid: any) => {
-                const auc     = bid.auction
-                const artwork = auc?.artwork
-                const isWinning = bid.is_winning
+                const auc        = bid.auction
+                const artwork    = auc?.artwork
+                const auctionEnded = auc && (new Date(auc.closes_at) < new Date() || auc.status === 'settled')
+                const awaitingPayment = auctionEnded && auc.status !== 'settled'
                 return (
-                  <Link href={'/artworks/' + artwork?.id} key={bid.id}
+                  <div key={bid.id}
                     style={{ background: 'var(--bg-secondary)', borderColor: 'var(--border)' }}
-                    className='border rounded-lg flex items-center gap-4 p-3 hover:border-purple-500 transition-colors'>
+                    className='border rounded-lg flex items-center gap-4 p-3'>
                     <div style={{ background: 'var(--bg-hover)' }}
                       className='w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 flex items-center justify-center'>
                       {artwork?.image_urls?.[0]
@@ -216,16 +218,26 @@ export default async function DashboardPage() {
                         {artwork?.title}
                       </div>
                       <div style={{ color: 'var(--text-muted)' }} className='text-xs mt-0.5'>
-                        Your bid: GBP {bid.amount_gbp?.toLocaleString()}
+                        Winning bid: <Price gbp={bid.amount_gbp} />
                       </div>
                     </div>
-                    <span style={isWinning
-                      ? { color: '#1D9E75', background: '#0a1f18', borderColor: '#1D9E75' }
-                      : { color: '#D85A30', background: '#1a0a08', borderColor: '#D85A30' }}
-                      className='text-xs font-medium px-2 py-0.5 rounded-full border'>
-                      {isWinning ? 'Winning' : 'Outbid'}
-                    </span>
-                  </Link>
+                    {auc?.status === 'settled' ? (
+                      <span style={{ color: '#1D9E75', background: '#0a1f18', borderColor: '#1D9E75' }}
+                        className='text-xs font-medium px-2 py-0.5 rounded-full border'>
+                        Paid
+                      </span>
+                    ) : awaitingPayment ? (
+                      <Link href={'/checkout/' + auc.id}
+                        style={{ background: 'var(--purple)', color: 'white', fontSize: '12px', fontWeight: 600, padding: '6px 14px', borderRadius: '8px', whiteSpace: 'nowrap' }}>
+                        Pay now →
+                      </Link>
+                    ) : (
+                      <span style={{ color: '#1D9E75', background: '#0a1f18', borderColor: '#1D9E75' }}
+                        className='text-xs font-medium px-2 py-0.5 rounded-full border'>
+                        Winning
+                      </span>
+                    )}
+                  </div>
                 )
               })}
             </div>

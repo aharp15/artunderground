@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
+import { Price } from '@/components/Price'
 
 interface BidEntry {
   id:         string
@@ -15,20 +16,21 @@ interface Props {
   initialCurrentBid: number | null
   initialReserve:   number
   initialBidCount:  number
-  isLive:           boolean
-  isPrivate:        boolean
-  isSeller:         boolean
-  closesAt:         string
-  status:           string
+  isLive:            boolean
+  isPrivate:         boolean
+  isSeller:          boolean
+  initialClosesAt:   string
+  status:            string
 }
 
 export function AuctionBidPanel({
   auctionId, initialCurrentBid, initialReserve,
-  initialBidCount, isLive, isPrivate, isSeller, closesAt, status,
+  initialBidCount, isLive, isPrivate, isSeller, initialClosesAt, status,
 }: Props) {
   const [currentBid, setCurrentBid] = useState<number | null>(initialCurrentBid)
   const [bidCount,   setBidCount]   = useState(initialBidCount)
   const [bids,       setBids]       = useState<BidEntry[]>([])
+  const [closesAt,   setClosesAt]   = useState(initialClosesAt)
   const [amount,     setAmount]     = useState('')
   const [loading,    setLoading]    = useState(false)
   const [error,      setError]      = useState<string | null>(null)
@@ -60,6 +62,7 @@ export function AuctionBidPanel({
           const d = payload.new as any
           if (d.current_bid_gbp !== undefined) setCurrentBid(d.current_bid_gbp)
           if (d.bid_count       !== undefined) setBidCount(d.bid_count)
+          if (d.closes_at       !== undefined) setClosesAt(d.closes_at)
         },
       )
       // New bid inserts
@@ -88,7 +91,7 @@ export function AuctionBidPanel({
     return () => { supabase.removeChannel(ch) }
   }, [auctionId])
 
-  // Countdown timer
+  // Countdown timer — re-runs whenever closesAt changes (e.g. seller ends early)
   useEffect(() => {
     function tick() {
       const diff = new Date(closesAt).getTime() - Date.now()
@@ -103,6 +106,7 @@ export function AuctionBidPanel({
     return () => clearInterval(id)
   }, [closesAt])
 
+  const liveNow    = isLive && new Date(closesAt).getTime() > Date.now()
   const displayBid = currentBid ?? initialReserve
   // Round suggested bid up to nearest £50
   const suggested = Math.ceil(((currentBid ?? initialReserve) + 50) / 50) * 50
@@ -136,7 +140,7 @@ export function AuctionBidPanel({
         </div>
       )}
 
-      {isLive && (
+      {liveNow && (
         <div style={{ background: '#1a0808', border: '0.5px solid var(--red)', borderRadius: '8px', padding: '8px 12px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '6px' }}>
           <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--red)' }} className='animate-pulse' />
           <span style={{ color: 'var(--red)', fontSize: '12px', fontWeight: 500 }}>Live — {timeLeft} remaining</span>
@@ -148,7 +152,7 @@ export function AuctionBidPanel({
           {currentBid ? 'Current bid' : 'Starting reserve'}
         </div>
         <div style={{ color: 'var(--text-primary)', fontSize: '32px', fontWeight: 600 }}>
-          GBP {Number(displayBid).toLocaleString()}
+          <Price gbp={displayBid} />
         </div>
         <div style={{ color: 'var(--text-muted)', fontSize: '12px' }}>{bidCount} bid{bidCount !== 1 ? 's' : ''}</div>
       </div>
@@ -175,7 +179,7 @@ export function AuctionBidPanel({
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <div style={{ color: i === 0 ? 'var(--purple)' : 'var(--text-primary)', fontSize: '13px', fontWeight: 600 }}>
-                    GBP {Number(b.amount_gbp).toLocaleString()}
+                    <Price gbp={b.amount_gbp} />
                   </div>
                   <div style={{ color: 'var(--text-muted)', fontSize: '10px' }}>
                     {new Date(b.placed_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -187,10 +191,10 @@ export function AuctionBidPanel({
         </div>
       )}
 
-      {isLive && !isSeller && (
+      {liveNow && !isSeller && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center', background: 'var(--bg-secondary)', border: '0.5px solid var(--border)', borderRadius: '10px', padding: '2px 4px 2px 12px' }}>
-            <span style={{ color: 'var(--text-muted)', fontSize: '13px', flexShrink: 0 }}>GBP</span>
+            <span style={{ color: 'var(--text-muted)', fontSize: '13px', flexShrink: 0 }}>£</span>
             <input
               type='number'
               value={amount}
@@ -213,12 +217,12 @@ export function AuctionBidPanel({
           {error   && <span style={{ color: 'var(--red)',   fontSize: '12px' }}>{error}</span>}
           {success && <span style={{ color: '#1D9E75', fontSize: '12px' }}>Bid placed successfully</span>}
           <p style={{ color: 'var(--text-muted)', fontSize: '11px', textAlign: 'center' }}>
-            Min next bid: GBP {suggested.toLocaleString()}
+            Min next bid: <Price gbp={suggested} />
           </p>
         </div>
       )}
 
-      {!isLive && (
+      {!liveNow && (
         <p style={{ color: 'var(--text-muted)', fontSize: '13px', textAlign: 'center' }}>
           {status === 'sold' ? 'Auction ended' : status === 'scheduled' ? 'Auction not yet open' : 'Auction ended'}
         </p>
