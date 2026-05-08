@@ -4,6 +4,7 @@
 -- ============================================================
 
 -- Function: close expired auctions, notify winner + seller
+DROP FUNCTION IF EXISTS close_expired_auctions();
 CREATE OR REPLACE FUNCTION close_expired_auctions()
 RETURNS integer
 LANGUAGE plpgsql
