@@ -40,6 +40,18 @@ export function AdminClient({ users, artworks, transactions }: {
     window.location.reload()
   }
 
+  async function toggleAdmin(id: string, current: boolean) {
+    const action = current ? 'Remove admin access from' : 'Grant admin access to'
+    const name = users.find(u => u.id === id)?.display_name ?? 'this user'
+    if (!confirm(`${action} ${name}?`)) return
+    const res = await fetch(`/api/admin/users/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ is_admin: !current }),
+    })
+    if (res.ok) window.location.reload()
+  }
+
   const q = filter.toLowerCase()
 
   const filteredUsers = users.filter(u =>
@@ -148,7 +160,7 @@ export function AdminClient({ users, artworks, transactions }: {
           <table className='w-full text-sm'>
             <thead>
               <tr style={{ borderColor: 'var(--border)' }} className='border-b'>
-                {['Name', 'Roles', 'Location', 'Joined'].map(h => (
+                {['Name', 'Roles', 'Location', 'Joined', 'Admin'].map(h => (
                   <th key={h} style={{ color: 'var(--text-muted)', fontSize: '11px' }}
                     className='text-left px-4 py-3 font-medium'>{h}</th>
                 ))}
@@ -181,6 +193,16 @@ export function AdminClient({ users, artworks, transactions }: {
                   <td style={{ color: 'var(--text-secondary)' }} className='px-4 py-3 text-xs'>{u.location ?? '—'}</td>
                   <td style={{ color: 'var(--text-muted)' }} className='px-4 py-3 text-xs'>
                     {new Date(u.created_at).toLocaleDateString('en-GB')}
+                  </td>
+                  <td className='px-4 py-3'>
+                    <button onClick={() => toggleAdmin(u.id, u.is_admin)}
+                      style={{
+                        fontSize: '11px',
+                        color: u.is_admin ? '#ef4444' : '#1D9E75',
+                      }}
+                      className='hover:opacity-70'>
+                      {u.is_admin ? 'Revoke' : 'Grant'}
+                    </button>
                   </td>
                 </tr>
               ))}
