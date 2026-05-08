@@ -1,183 +1,295 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { SiteNav } from '@/components/SiteNav'
-import { LiveAuctionBanner } from '@/components/LiveAuctionBanner'
 import { Price } from '@/components/Price'
 import Link from 'next/link'
 
 export default async function Home() {
   const supabase = await createServerSupabaseClient()
+  const { data: { user } } = await supabase.auth.getUser()
 
-  const [artworksRes, liveAuctionsRes, artistsRes] = await Promise.all([
+  const [artworksRes, liveAuctionsRes, artistsRes, exhibitionsRes, statsRes] = await Promise.all([
     supabase
       .from('artworks')
-      .select('*, artist:profiles(id, display_name, location), auction:auctions(id, current_bid_gbp, bid_count, closes_at, status)')
+      .select('*, artist:profiles(id, display_name, avatar_url), auction:auctions(id, current_bid_gbp, bid_count, closes_at, status)')
       .in('status', ['listed', 'in_auction'])
       .order('created_at', { ascending: false })
       .limit(8),
     supabase
       .from('auctions')
-      .select('*, artwork:artworks(id, title, image_urls), seller:profiles(display_name)')
+      .select('*, artwork:artworks(id, title, image_urls), seller:profiles(id, display_name, avatar_url)')
       .eq('status', 'live')
       .order('closes_at', { ascending: true })
-      .limit(1),
+      .limit(3),
     supabase
       .from('profiles')
-      .select('id, display_name, location, bio, roles')
+      .select('id, display_name, location, bio, avatar_url, roles')
       .contains('roles', ['artist'])
+      .order('created_at', { ascending: false })
+      .limit(4),
+    supabase
+      .from('exhibitions')
+      .select('id, title, statement, curator:profiles(id, display_name, avatar_url)')
+      .eq('status', 'published')
+      .order('created_at', { ascending: false })
       .limit(3),
+    supabase.from('profiles').select('id', { count: 'exact', head: true }).contains('roles', ['artist']),
   ])
 
-  const artworks    = artworksRes.data    ?? []
-  const liveAuction = liveAuctionsRes.data?.[0] ?? null
-  const artists     = artistsRes.data     ?? []
-
-  const totalArtworks = artworks.length
-  const liveCount     = artworks.filter((a: any) => a.status === 'in_auction').length
+  const artworks    = (artworksRes.data    ?? []) as any[]
+  const liveAuctions = (liveAuctionsRes.data ?? []) as any[]
+  const artists     = (artistsRes.data     ?? []) as any[]
+  const exhibitions = (exhibitionsRes.data ?? []) as any[]
+  const artistCount = statsRes.count ?? 0
 
   return (
     <main style={{ minHeight: '100vh', background: 'var(--bg-primary)' }}>
       <SiteNav currentPage='discover' />
 
-      <div className='max-w-5xl mx-auto px-6 py-10'>
+      <div className='max-w-5xl mx-auto px-6 py-10 space-y-12'>
 
-        {/* Hero band */}
-        <div style={{ background: 'linear-gradient(135deg, #1a1933 0%, #0d1a2e 100%)', borderColor: 'var(--border)', borderRadius: '16px', padding: '32px', marginBottom: '20px' }}
-          className='flex flex-wrap gap-6 justify-between items-center'>
-          <div style={{ flex: '1', minWidth: '240px' }}>
-            <h1 style={{ color: 'var(--text-primary)', fontSize: '24px', fontWeight: 500, lineHeight: 1.3, maxWidth: '340px' }}>
-              Where art finds its audience — and its price
-            </h1>
-            <p style={{ color: 'var(--purple)', fontSize: '13px', marginTop: '8px' }}>
-              Artists. Collectors. Curators. All in one space.
-            </p>
-            <div style={{ display: 'flex', gap: '10px', marginTop: '18px', flexWrap: 'wrap' }}>
-              <Link href='/auth'
-                style={{ background: 'var(--purple)', color: 'white', padding: '9px 18px', borderRadius: '10px', fontSize: '13px', fontWeight: 500 }}
-                className='hover:opacity-90 transition-opacity'>
-                Show my work
-              </Link>
-              <Link href='/auctions'
-                style={{ background: 'transparent', color: 'var(--purple)', padding: '9px 18px', borderRadius: '10px', fontSize: '13px', fontWeight: 500, border: '1.5px solid var(--purple)' }}
-                className='hover:opacity-90 transition-opacity'>
-                Explore auctions
-              </Link>
+        {/* ── Hero ─────────────────────────────────────────────────────────── */}
+        <section style={{
+          background: 'linear-gradient(135deg, #1a1933 0%, #0d1117 100%)',
+          borderColor: 'var(--border)', borderRadius: '20px', border: '0.5px solid',
+          padding: '48px 40px',
+        }}>
+          <div className='flex flex-wrap gap-8 items-center justify-between'>
+            <div style={{ maxWidth: '420px' }}>
+              <div style={{ color: 'var(--purple)', fontSize: '11px', letterSpacing: '0.15em', marginBottom: '14px' }}>
+                THE UNDERGROUND MARKETPLACE
+              </div>
+              <h1 style={{ color: 'var(--text-primary)', fontSize: '32px', fontWeight: 500, lineHeight: 1.25, marginBottom: '14px' }}>
+                Where art finds its audience — and its price
+              </h1>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '14px', lineHeight: 1.6, marginBottom: '24px' }}>
+                Live auctions, curated exhibitions and direct sales. Artists, collectors and curators in one space.
+              </p>
+              <div className='flex flex-wrap gap-3'>
+                {!user && (
+                  <Link href='/auth'
+                    style={{ background: 'var(--purple)', color: 'white', padding: '10px 22px', borderRadius: '10px', fontSize: '14px', fontWeight: 500 }}
+                    className='hover:opacity-90 transition-opacity'>
+                    Join free
+                  </Link>
+                )}
+                <Link href='/auctions'
+                  style={{ background: 'transparent', color: 'var(--text-primary)', padding: '10px 22px', borderRadius: '10px', fontSize: '14px', fontWeight: 500, border: '0.5px solid var(--border)' }}
+                  className='hover:border-purple-500 transition-colors'>
+                  Live auctions →
+                </Link>
+              </div>
+            </div>
+            <div className='flex gap-8'>
+              {[
+                { value: artistCount > 0 ? `${artistCount}` : '—', label: 'Artists' },
+                { value: liveAuctions.length > 0 ? `${liveAuctions.length}` : '—', label: 'Live now' },
+                { value: artworks.length > 0 ? `${artworks.length}+` : '—', label: 'Works listed' },
+              ].map(s => (
+                <div key={s.label} className='text-center'>
+                  <div style={{ color: 'var(--text-primary)', fontSize: '28px', fontWeight: 600 }}>{s.value}</div>
+                  <div style={{ color: 'var(--text-muted)', fontSize: '11px', marginTop: '3px' }}>{s.label}</div>
+                </div>
+              ))}
             </div>
           </div>
-          <div className='flex sm:flex-col gap-5 sm:gap-4 sm:items-end'>
-            {[
-              { num: artists.length + '00+', label: 'Artists' },
-              { num: liveCount > 0 ? liveCount + '' : '—', label: 'Live auctions' },
-              { num: totalArtworks + '', label: 'Works listed' },
-            ].map(({ num, label }) => (
-              <div key={label} className='sm:text-right'>
-                <div style={{ fontSize: '22px', fontWeight: 500, color: 'var(--text-primary)' }}>{num}</div>
-                <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{label}</div>
-              </div>
-            ))}
-          </div>
-        </div>
+        </section>
 
-        {/* Live auction banner */}
-        {liveAuction && (
-          <div id='auctions'>
-            <LiveAuctionBanner auction={liveAuction} />
-          </div>
+        {/* ── Live auctions ────────────────────────────────────────────────── */}
+        {liveAuctions.length > 0 && (
+          <section>
+            <div className='flex items-center justify-between mb-5'>
+              <div className='flex items-center gap-2'>
+                <div style={{ width: '8px', height: '8px', background: 'var(--red)', borderRadius: '50%' }} className='animate-pulse' />
+                <h2 style={{ color: 'var(--text-primary)', fontSize: '15px', fontWeight: 500 }}>Live auctions</h2>
+              </div>
+              <Link href='/auctions' style={{ color: 'var(--purple)', fontSize: '12px' }} className='hover:opacity-80'>
+                View all →
+              </Link>
+            </div>
+            <div className='grid grid-cols-1 sm:grid-cols-3 gap-4'>
+              {liveAuctions.map((auc: any) => {
+                const diff     = new Date(auc.closes_at).getTime() - Date.now()
+                const hrs      = Math.floor(diff / 3_600_000)
+                const mins     = Math.floor((diff % 3_600_000) / 60_000)
+                const timeLeft = diff > 0 ? (hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m left`) : 'Ending'
+                return (
+                  <Link key={auc.id} href={`/auctions/${auc.id}`}
+                    style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}
+                    className='border rounded-xl overflow-hidden hover:border-purple-500/50 transition-colors block group'>
+                    <div style={{ background: 'var(--bg-hover)', aspectRatio: '16/9', overflow: 'hidden', position: 'relative' }}>
+                      {auc.artwork?.image_urls?.[0]
+                        ? <img src={auc.artwork.image_urls[0]} alt={auc.artwork.title}
+                            className='w-full h-full object-cover group-hover:scale-105 transition-transform duration-300' />
+                        : <div className='w-full h-full' />}
+                      <div style={{ position: 'absolute', top: '8px', left: '8px', background: '#1a0808cc', borderColor: 'var(--red)', color: 'var(--red)', fontSize: '10px', fontWeight: 500 }}
+                        className='border rounded-full px-2 py-0.5'>
+                        {timeLeft}
+                      </div>
+                    </div>
+                    <div className='p-4'>
+                      <div style={{ color: 'var(--text-primary)' }} className='font-medium text-sm truncate'>{auc.artwork?.title}</div>
+                      <div style={{ color: 'var(--text-muted)' }} className='text-xs mt-0.5'>{auc.seller?.display_name}</div>
+                      <div className='flex items-center justify-between mt-3'>
+                        <div>
+                          <div style={{ color: 'var(--text-muted)', fontSize: '10px' }}>Current bid</div>
+                          <div style={{ color: 'var(--purple)', fontWeight: 600, fontSize: '15px' }}>
+                            <Price gbp={auc.current_bid_gbp ?? auc.reserve_gbp ?? 0} />
+                          </div>
+                        </div>
+                        <div style={{ color: 'var(--text-muted)', fontSize: '11px' }}>
+                          {auc.bid_count ?? 0} bid{auc.bid_count !== 1 ? 's' : ''}
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
+                )
+              })}
+            </div>
+          </section>
         )}
 
-        {/* Featured works */}
-        <div style={{ marginBottom: '28px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-            <h2 style={{ color: 'var(--text-primary)', fontSize: '15px', fontWeight: 500 }}>Featured works</h2>
-            <Link href='/auctions' style={{ color: 'var(--purple)', fontSize: '12px' }}>See all</Link>
-          </div>
-
-          {artworks.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-muted)', fontSize: '14px' }}>
-              <div style={{ fontSize: '32px', marginBottom: '12px' }}>art</div>
-              <div style={{ color: 'var(--text-secondary)', fontWeight: 500, marginBottom: '6px' }}>No works listed yet</div>
-              <p style={{ fontSize: '13px', marginBottom: '20px' }}>Be the first artist to list a work.</p>
-              <Link href='/auth'
-                style={{ background: 'var(--purple)', color: 'white', padding: '9px 20px', borderRadius: '10px', fontSize: '13px', fontWeight: 500 }}>
-                Join as an artist
+        {/* ── Featured works ───────────────────────────────────────────────── */}
+        {artworks.length > 0 && (
+          <section>
+            <div className='flex items-center justify-between mb-5'>
+              <h2 style={{ color: 'var(--text-primary)', fontSize: '15px', fontWeight: 500 }}>Featured works</h2>
+              <Link href='/artworks' style={{ color: 'var(--purple)', fontSize: '12px' }} className='hover:opacity-80'>
+                Browse all →
               </Link>
             </div>
-          ) : (
             <div className='grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3'>
               {artworks.map((work: any) => (
-                <Link href={'/artworks/' + work.id} key={work.id}
-                  style={{ background: 'var(--bg-card)', borderColor: 'var(--border)', borderRadius: '12px', border: '0.5px solid', overflow: 'hidden', display: 'block', textDecoration: 'none' }}
-                  className='hover:border-purple-500 transition-colors group'>
-                  <div style={{ height: '140px', background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', position: 'relative' }}>
+                <Link key={work.id} href={`/artworks/${work.id}`}
+                  style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}
+                  className='border rounded-xl overflow-hidden hover:border-purple-500/50 transition-colors block group'>
+                  <div style={{ background: 'var(--bg-hover)', aspectRatio: '1', overflow: 'hidden', position: 'relative' }}>
                     {work.image_urls?.[0]
                       ? <img src={work.image_urls[0]} alt={work.title}
-                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                          className='group-hover:scale-105 transition-transform duration-300' />
-                      : <span style={{ color: 'var(--text-muted)', fontSize: '28px' }}>art</span>}
+                          className='w-full h-full object-cover group-hover:scale-105 transition-transform duration-300' />
+                      : <div className='w-full h-full' />}
                     {work.status === 'in_auction' && (
-                      <div style={{ position: 'absolute', top: '8px', left: '8px', background: '#FAECE7', color: '#993C1D', fontSize: '10px', fontWeight: 500, padding: '2px 8px', borderRadius: '100px' }}>
+                      <div style={{ position: 'absolute', top: '8px', left: '8px', background: '#FAECE7dd', color: '#993C1D', fontSize: '9px', fontWeight: 600, padding: '2px 8px', borderRadius: '100px' }}>
                         Live bid
                       </div>
                     )}
-                    {work.status === 'listed' && (
-                      <div style={{ position: 'absolute', top: '8px', left: '8px', background: '#EAF3DE', color: '#3B6D11', fontSize: '10px', fontWeight: 500, padding: '2px 8px', borderRadius: '100px' }}>
-                        New
-                      </div>
-                    )}
                   </div>
-                  <div style={{ padding: '10px 12px' }}>
-                    <div style={{ color: 'var(--text-primary)', fontSize: '12px', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {work.title}
+                  <div className='p-3'>
+                    <div style={{ color: 'var(--text-primary)' }} className='text-xs font-medium truncate'>{work.title}</div>
+                    <div className='flex items-center gap-1.5 mt-1'>
+                      {work.artist?.avatar_url ? (
+                        <img src={work.artist.avatar_url} alt='' className='w-4 h-4 rounded-full object-cover' />
+                      ) : (
+                        <div style={{ background: '#26215C', color: '#AFA9EC', width: '16px', height: '16px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '7px', fontWeight: 600 }}>
+                          {work.artist?.display_name?.slice(0, 1)}
+                        </div>
+                      )}
+                      <span style={{ color: 'var(--text-muted)', fontSize: '11px' }} className='truncate'>
+                        {work.artist?.display_name}
+                      </span>
                     </div>
-                    <div style={{ color: 'var(--text-secondary)', fontSize: '11px', marginTop: '2px' }}>
-                      {work.artist?.display_name}
-                    </div>
-                    <div style={{ color: work.status === 'in_auction' ? '#7F77DD' : 'var(--purple)', fontSize: '12px', fontWeight: 500, marginTop: '6px' }}>
+                    <div style={{ color: 'var(--purple)', fontSize: '12px', fontWeight: 600, marginTop: '6px' }}>
                       {work.auction?.current_bid_gbp
                         ? <Price gbp={work.auction.current_bid_gbp} />
                         : work.price_gbp
                         ? <Price gbp={work.price_gbp} />
-                        : 'POA'}
+                        : <span style={{ color: 'var(--text-muted)' }}>POA</span>}
                     </div>
-                    {work.auction?.bid_count > 0 && (
-                      <div style={{ color: 'var(--text-muted)', fontSize: '10px', marginTop: '2px' }}>
-                        {work.auction.bid_count} bid{work.auction.bid_count !== 1 ? 's' : ''}
-                      </div>
-                    )}
                   </div>
                 </Link>
               ))}
             </div>
-          )}
-        </div>
+          </section>
+        )}
 
-        {/* Artists to follow */}
-        {artists.length > 0 && (
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-              <h2 style={{ color: 'var(--text-primary)', fontSize: '15px', fontWeight: 500 }}>Artists to follow</h2>
-              <Link href='/artists' style={{ color: 'var(--purple)', fontSize: '12px' }}>Browse all</Link>
+        {/* ── Exhibitions ──────────────────────────────────────────────────── */}
+        {exhibitions.length > 0 && (
+          <section>
+            <div className='flex items-center justify-between mb-5'>
+              <h2 style={{ color: 'var(--text-primary)', fontSize: '15px', fontWeight: 500 }}>Exhibitions</h2>
+              <Link href='/exhibitions' style={{ color: 'var(--purple)', fontSize: '12px' }} className='hover:opacity-80'>
+                View all →
+              </Link>
             </div>
-            <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3'>
-              {artists.map((artist: any) => (
-                <Link key={artist.id} href={'/artists/' + artist.id}
-                  style={{ background: 'var(--bg-card)', borderColor: 'var(--border)', border: '0.5px solid', borderRadius: '12px', padding: '14px', display: 'flex', gap: '10px', alignItems: 'flex-start', textDecoration: 'none' }}
-                  className='hover:border-purple-500 transition-colors'>
-                  <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#26215C', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: 500, color: '#AFA9EC', flexShrink: 0 }}>
-                    {artist.display_name?.slice(0, 2).toUpperCase()}
+            <div className='grid grid-cols-1 sm:grid-cols-3 gap-4'>
+              {exhibitions.map((ex: any) => (
+                <Link key={ex.id} href={`/exhibitions/${ex.id}`}
+                  style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}
+                  className='border rounded-xl overflow-hidden hover:border-purple-500/50 transition-colors block'>
+                  <div style={{ background: 'linear-gradient(135deg,#1a1933 0%,#26215C 100%)', height: '100px' }}
+                    className='flex items-center justify-center'>
+                    <span style={{ color: 'var(--purple)', fontSize: '10px', letterSpacing: '0.12em' }}>EXHIBITION</span>
                   </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ color: 'var(--text-primary)', fontSize: '13px', fontWeight: 500 }}>{artist.display_name}</div>
-                    <div style={{ color: 'var(--text-secondary)', fontSize: '11px', marginTop: '2px' }}>{artist.location ?? 'ArtUNDERGROUND'}</div>
-                    <div style={{ color: 'var(--text-muted)', fontSize: '10px', marginTop: '5px' }}>
-                      {artworks.filter((w: any) => w.artist?.id === artist.id).length} works listed
+                  <div className='p-4'>
+                    <div style={{ color: 'var(--text-primary)' }} className='font-medium text-sm mb-1 line-clamp-1'>{ex.title}</div>
+                    {ex.statement && (
+                      <p style={{ color: 'var(--text-secondary)' }} className='text-xs line-clamp-2 mb-3'>{ex.statement}</p>
+                    )}
+                    <div className='flex items-center gap-2'>
+                      {ex.curator?.avatar_url ? (
+                        <img src={ex.curator.avatar_url} alt='' className='w-5 h-5 rounded-full object-cover' />
+                      ) : (
+                        <div style={{ background: '#26215C', color: '#AFA9EC' }}
+                          className='w-5 h-5 rounded-full flex items-center justify-center text-xs font-medium'>
+                          {ex.curator?.display_name?.slice(0, 1)}
+                        </div>
+                      )}
+                      <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>{ex.curator?.display_name}</span>
                     </div>
                   </div>
-                  <span style={{ fontSize: '11px', border: '0.5px solid var(--purple)', color: 'var(--purple)', background: 'none', borderRadius: '100px', padding: '3px 10px', whiteSpace: 'nowrap' }}>
-                    View →
-                  </span>
                 </Link>
               ))}
             </div>
+          </section>
+        )}
+
+        {/* ── Artists ──────────────────────────────────────────────────────── */}
+        {artists.length > 0 && (
+          <section>
+            <div className='flex items-center justify-between mb-5'>
+              <h2 style={{ color: 'var(--text-primary)', fontSize: '15px', fontWeight: 500 }}>Artists to follow</h2>
+              <Link href='/artists' style={{ color: 'var(--purple)', fontSize: '12px' }} className='hover:opacity-80'>
+                Browse all →
+              </Link>
+            </div>
+            <div className='grid grid-cols-2 sm:grid-cols-4 gap-3'>
+              {artists.map((artist: any) => (
+                <Link key={artist.id} href={`/artists/${artist.id}`}
+                  style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}
+                  className='border rounded-xl p-4 hover:border-purple-500/50 transition-colors block text-center'>
+                  {artist.avatar_url ? (
+                    <img src={artist.avatar_url} alt=''
+                      className='w-14 h-14 rounded-full object-cover mx-auto mb-3' />
+                  ) : (
+                    <div style={{ background: '#26215C', color: '#AFA9EC' }}
+                      className='w-14 h-14 rounded-full flex items-center justify-center text-lg font-medium mx-auto mb-3'>
+                      {artist.display_name?.slice(0, 2).toUpperCase()}
+                    </div>
+                  )}
+                  <div style={{ color: 'var(--text-primary)' }} className='text-sm font-medium truncate'>{artist.display_name}</div>
+                  {artist.location && (
+                    <div style={{ color: 'var(--text-muted)' }} className='text-xs mt-0.5 truncate'>{artist.location}</div>
+                  )}
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* ── Empty state for fresh installs ──────────────────────────────── */}
+        {artworks.length === 0 && liveAuctions.length === 0 && (
+          <div className='text-center py-20'>
+            <div style={{ color: 'var(--text-muted)', fontSize: '40px', marginBottom: '16px' }}>art</div>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '16px', fontWeight: 500, marginBottom: '8px' }}>
+              Nothing listed yet
+            </p>
+            <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginBottom: '24px' }}>
+              Be the first artist to list a work.
+            </p>
+            <Link href='/auth'
+              style={{ background: 'var(--purple)', color: 'white', padding: '10px 24px', borderRadius: '10px', fontSize: '14px', fontWeight: 500 }}
+              className='hover:opacity-90 transition-opacity'>
+              Join as an artist
+            </Link>
           </div>
         )}
 

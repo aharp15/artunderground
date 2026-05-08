@@ -18,8 +18,9 @@ export default async function DashboardPage() {
 
   const isArtist    = profile.roles.includes('artist')
   const isCollector = profile.roles.includes('collector')
+  const isCurator   = profile.roles.includes('curator')
 
-  const [artworksRes, auctionsRes, watchingRes, notificationsRes] = await Promise.all([
+  const [artworksRes, auctionsRes, watchingRes, notificationsRes, exhibitionsRes] = await Promise.all([
     isArtist
       ? supabase.from('artworks')
           .select('*, auction:auctions(id, current_bid_gbp, bid_count, closes_at, status)')
@@ -39,12 +40,19 @@ export default async function DashboardPage() {
       : Promise.resolve({ data: [] }),
     supabase.from('notifications').select('*').eq('user_id', profile.id)
       .eq('read', false).order('created_at', { ascending: false }).limit(5),
+    isCurator
+      ? supabase.from('exhibitions')
+          .select('id, title, status, created_at')
+          .eq('curator_id', profile.id)
+          .order('created_at', { ascending: false }).limit(10)
+      : Promise.resolve({ data: [] }),
   ])
 
   const artworks      = (artworksRes.data      ?? []) as any[]
   const auctions      = (auctionsRes.data      ?? []) as any[]
   const watching      = (watchingRes.data      ?? []) as any[]
   const notifications = (notificationsRes.data ?? []) as any[]
+  const exhibitions   = (exhibitionsRes.data   ?? []) as any[]
 
   let totalEarned = 0
   if (isArtist) {
@@ -241,6 +249,57 @@ export default async function DashboardPage() {
                 )
               })}
             </div>
+          </div>
+        )}
+
+        {/* Curator exhibitions */}
+        {isCurator && (
+          <div style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }} className='border rounded-xl p-5'>
+            <div className='flex items-center justify-between mb-4'>
+              <h2 style={{ color: 'var(--text-primary)' }} className='font-medium'>My exhibitions</h2>
+              <Link href='/exhibitions/new'
+                style={{ color: 'var(--purple)', fontSize: '13px' }}
+                className='hover:opacity-80'>
+                + New
+              </Link>
+            </div>
+            {exhibitions.length === 0 ? (
+              <div className='text-center py-8'>
+                <p style={{ color: 'var(--text-muted)' }} className='text-sm mb-3'>No exhibitions yet</p>
+                <Link href='/exhibitions/new'
+                  style={{ background: 'var(--purple)', fontSize: '13px' }}
+                  className='text-white px-4 py-2 rounded-lg font-medium hover:opacity-90'>
+                  Create your first exhibition
+                </Link>
+              </div>
+            ) : (
+              <div className='space-y-2'>
+                {exhibitions.map((ex: any) => (
+                  <div key={ex.id}
+                    style={{ background: 'var(--bg-secondary)', borderColor: 'var(--border)' }}
+                    className='border rounded-lg flex items-center gap-3 p-3'>
+                    <div style={{
+                      background: ex.status === 'published' ? '#0a1f18' : 'var(--bg-hover)',
+                      borderColor: ex.status === 'published' ? '#1D9E75' : 'var(--border)',
+                      color: ex.status === 'published' ? '#1D9E75' : 'var(--text-muted)',
+                    }} className='text-xs border rounded-full px-2 py-0.5 capitalize flex-shrink-0'>
+                      {ex.status}
+                    </div>
+                    <span style={{ color: 'var(--text-primary)' }} className='text-sm flex-1 truncate font-medium'>
+                      {ex.title}
+                    </span>
+                    <div className='flex items-center gap-3 flex-shrink-0'>
+                      <Link href={`/exhibitions/${ex.id}/edit`}
+                        style={{ color: 'var(--text-muted)', fontSize: '12px' }}
+                        className='hover:opacity-80'>Edit</Link>
+                      <Link href={`/exhibitions/${ex.id}`}
+                        style={{ color: 'var(--purple)', fontSize: '12px' }}
+                        className='hover:opacity-80'>View →</Link>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

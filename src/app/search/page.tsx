@@ -13,12 +13,13 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
 
   let artists: any[] = []
   let artworks: any[] = []
+  let exhibitions: any[] = []
 
   if (query.length >= 2) {
     const supabase = await createServerSupabaseClient()
     const pattern = `%${query}%`
 
-    const [artistsRes, artworksRes] = await Promise.all([
+    const [artistsRes, artworksRes, exhibitionsRes] = await Promise.all([
       supabase
         .from('profiles')
         .select('id, display_name, bio, location, avatar_url, roles')
@@ -31,13 +32,20 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
         .ilike('title', pattern)
         .in('status', ['available', 'auctioned'])
         .limit(12),
+      supabase
+        .from('exhibitions')
+        .select('id, title, statement, curator:profiles(id, display_name, avatar_url)')
+        .ilike('title', pattern)
+        .eq('status', 'published')
+        .limit(6),
     ])
 
-    artists = artistsRes.data ?? []
-    artworks = artworksRes.data ?? []
+    artists     = artistsRes.data     ?? []
+    artworks    = artworksRes.data    ?? []
+    exhibitions = exhibitionsRes.data ?? []
   }
 
-  const noResults = query.length >= 2 && artists.length === 0 && artworks.length === 0
+  const noResults = query.length >= 2 && artists.length === 0 && artworks.length === 0 && exhibitions.length === 0
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg-primary)' }}>
@@ -108,6 +116,44 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
                   {artist.bio && (
                     <p style={{ color: 'var(--text-secondary)' }} className='text-xs line-clamp-2'>{artist.bio}</p>
                   )}
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Exhibitions */}
+        {exhibitions.length > 0 && (
+          <section className='mb-10'>
+            <h2 style={{ color: 'var(--text-primary)' }} className='font-medium text-lg mb-4'>
+              Exhibitions <span style={{ color: 'var(--text-muted)' }} className='text-sm font-normal'>({exhibitions.length})</span>
+            </h2>
+            <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4'>
+              {exhibitions.map((ex: any) => (
+                <Link key={ex.id} href={`/exhibitions/${ex.id}`}
+                  style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}
+                  className='border rounded-xl overflow-hidden hover:border-purple-500/50 transition-colors block'>
+                  <div style={{ background: 'linear-gradient(135deg,#1a1933 0%,#26215C 100%)', height: '80px' }}
+                    className='flex items-center justify-center'>
+                    <span style={{ color: 'var(--purple)', fontSize: '10px', letterSpacing: '0.1em' }}>EXHIBITION</span>
+                  </div>
+                  <div className='p-4'>
+                    <div style={{ color: 'var(--text-primary)' }} className='font-medium text-sm truncate'>{ex.title}</div>
+                    {ex.statement && (
+                      <div style={{ color: 'var(--text-secondary)' }} className='text-xs mt-1 line-clamp-2'>{ex.statement}</div>
+                    )}
+                    <div className='flex items-center gap-2 mt-3'>
+                      {ex.curator?.avatar_url ? (
+                        <img src={ex.curator.avatar_url} alt='' className='w-5 h-5 rounded-full object-cover' />
+                      ) : (
+                        <div style={{ background: '#26215C', color: '#AFA9EC' }}
+                          className='w-5 h-5 rounded-full flex items-center justify-center text-xs font-medium'>
+                          {ex.curator?.display_name?.slice(0, 1)}
+                        </div>
+                      )}
+                      <span style={{ color: 'var(--text-muted)' }} className='text-xs'>{ex.curator?.display_name}</span>
+                    </div>
+                  </div>
                 </Link>
               ))}
             </div>

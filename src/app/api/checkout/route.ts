@@ -77,7 +77,15 @@ export async function POST(request: NextRequest) {
 
     const breakdown = buildBreakdown(a.current_bid_gbp)
 
-    const intent = await stripe.paymentIntents.create({
+    // Fetch seller's Stripe Connect account if they have one
+    const { data: seller } = await admin
+      .from('profiles').select('stripe_account_id').eq('id', a.seller_id).single()
+    const sellerAccountId = (seller as any)?.stripe_account_id as string | null
+
+    const commissionGbp    = Math.round(a.current_bid_gbp * (COMMISSION_PCT / 100) * 100) / 100
+    const appFeePence      = Math.round((breakdown.buyer_premium + commissionGbp) * 100)
+
+    const intentParams: any = {
       amount:   breakdown.total_pence,
       currency: 'gbp',
       metadata: {
@@ -89,7 +97,15 @@ export async function POST(request: NextRequest) {
         commission_pct:    String(COMMISSION_PCT),
         buyer_premium_gbp: String(breakdown.buyer_premium),
       },
-    })
+    }
+
+    // Route funds to seller via Connect if they've onboarded
+    if (sellerAccountId) {
+      intentParams.application_fee_amount = appFeePence
+      intentParams.transfer_data = { destination: sellerAccountId }
+    }
+
+    const intent = await stripe.paymentIntents.create(intentParams)
 
     return NextResponse.json({ client_secret: intent.client_secret, amount_pence: intent.amount, breakdown })
 

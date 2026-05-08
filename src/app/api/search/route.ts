@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
   const supabase = await createServerSupabaseClient()
   const pattern = `%${q}%`
 
-  const [artistsRes, artworksRes] = await Promise.all([
+  const [artistsRes, artworksRes, exhibitionsRes] = await Promise.all([
     supabase
       .from('profiles')
       .select('id, display_name, bio, location, avatar_url, roles')
@@ -21,10 +21,17 @@ export async function GET(request: NextRequest) {
       .ilike('title', pattern)
       .in('status', ['available', 'auctioned'])
       .limit(12),
+    supabase
+      .from('exhibitions')
+      .select('id, title, statement, curator:profiles(id, display_name, avatar_url)')
+      .ilike('title', pattern)
+      .eq('status', 'published')
+      .limit(6),
   ])
 
   return NextResponse.json({
-    artists: artistsRes.data ?? [],
-    artworks: artworksRes.data ?? [],
+    artists:     artistsRes.data     ?? [],
+    artworks:    artworksRes.data    ?? [],
+    exhibitions: exhibitionsRes.data ?? [],
   })
 }
