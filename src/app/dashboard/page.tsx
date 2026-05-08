@@ -201,7 +201,7 @@ export default async function DashboardPage() {
               {watching.map((bid: any) => {
                 const auc        = bid.auction
                 const artwork    = auc?.artwork
-                const auctionEnded = auc && (new Date(auc.closes_at) < new Date() || auc.status === 'settled')
+                const auctionEnded = auc && (new Date(auc.closes_at) < new Date() || auc.status === 'ended' || auc.status === 'settled')
                 const awaitingPayment = auctionEnded && auc.status !== 'settled'
                 return (
                   <div key={bid.id}

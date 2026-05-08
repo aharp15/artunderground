@@ -54,6 +54,19 @@ export async function SiteNav({ currentPage }: { currentPage?: string }) {
       </div>
 
       <div className='flex items-center gap-4'>
+        {/* Search form */}
+        <form action='/search' method='GET' className='hidden md:flex'>
+          <div style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}
+            className='border rounded-lg flex items-center gap-2 px-3 py-1.5'>
+            <svg width='13' height='13' fill='none' viewBox='0 0 24 24' stroke='var(--text-muted)' strokeWidth='2.5'>
+              <circle cx='11' cy='11' r='8' /><path d='m21 21-4.35-4.35' strokeLinecap='round' />
+            </svg>
+            <input name='q' placeholder='Search…'
+              style={{ background: 'transparent', color: 'var(--text-primary)', outline: 'none', width: '140px', fontSize: '12px' }}
+            />
+          </div>
+        </form>
+
         {user && isArtist && (
           <Link href='/portfolio/upload'
             style={{ color: 'var(--text-secondary)', fontSize: '13px' }}
@@ -82,13 +95,20 @@ export async function SiteNav({ currentPage }: { currentPage?: string }) {
         {user ? (
           <>
             <Link href='/dashboard' className='flex items-center gap-2 hover:opacity-80'>
-              <div style={{ background: '#26215C', color: '#AFA9EC' }}
-                className='w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium'>
-                {profile?.display_name?.slice(0, 2).toUpperCase() ?? 'AU'}
-              </div>
+              {profile ? (
+                <div style={{ background: '#26215C', color: '#AFA9EC' }}
+                  className='w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium overflow-hidden'>
+                  {profile.display_name?.slice(0, 2).toUpperCase() ?? 'AU'}
+                </div>
+              ) : null}
               <span style={{ color: 'var(--text-secondary)', fontSize: '13px' }} className='hidden sm:block'>
                 {profile?.display_name?.split(' ')[0]}
               </span>
+            </Link>
+            <Link href='/settings'
+              style={{ color: 'var(--text-muted)', fontSize: '12px' }}
+              className='hover:text-gray-400 transition-colors hidden sm:block'>
+              Settings
             </Link>
             <form action='/auth/signout' method='POST'>
               <button style={{ color: 'var(--text-muted)', fontSize: '12px' }}

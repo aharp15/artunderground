@@ -7,6 +7,7 @@ const CreateProfileSchema = z.object({
   roles: z.array(z.enum(['artist', 'collector', 'curator'])).min(1),
   bio: z.string().max(600).optional(),
   location: z.string().max(100).optional(),
+  avatar_url: z.string().url().optional(),
 })
 const UpdateProfileSchema = CreateProfileSchema.partial()
 
