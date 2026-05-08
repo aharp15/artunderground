@@ -8,7 +8,7 @@ interface BidEntry {
   id:         string
   amount_gbp: number
   placed_at:  string
-  bidder:     { display_name: string } | null
+  bidder:     { display_name: string; avatar_url?: string | null } | null
 }
 
 interface Props {
@@ -46,7 +46,7 @@ export function AuctionBidPanel({
     // Fetch bid history
     supabase
       .from('bids')
-      .select('id, amount_gbp, placed_at, bidder:profiles!bidder_id(display_name)')
+      .select('id, amount_gbp, placed_at, bidder:profiles!bidder_id(display_name, avatar_url)')
       .eq('auction_id', auctionId)
       .order('placed_at', { ascending: false })
       .limit(50)
@@ -170,9 +170,14 @@ export function AuctionBidPanel({
                 border: `0.5px solid ${i === 0 ? 'var(--purple)' : 'var(--border)'}`,
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: '#26215C', color: '#AFA9EC', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', fontWeight: 600, flexShrink: 0 }}>
-                    {b.bidder?.display_name?.slice(0, 2).toUpperCase() ?? '??'}
-                  </div>
+                  {b.bidder?.avatar_url ? (
+                    <img src={b.bidder.avatar_url} alt=''
+                      style={{ width: '22px', height: '22px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                  ) : (
+                    <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: '#26215C', color: '#AFA9EC', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', fontWeight: 600, flexShrink: 0 }}>
+                      {b.bidder?.display_name?.slice(0, 2).toUpperCase() ?? '??'}
+                    </div>
+                  )}
                   <span style={{ color: i === 0 ? 'var(--text-primary)' : 'var(--text-secondary)', fontSize: '12px' }}>
                     {b.bidder?.display_name ?? 'Anonymous'}
                   </span>
